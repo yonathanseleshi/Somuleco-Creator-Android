@@ -1,14 +1,31 @@
 package com.example.data.repository
 
 import com.example.data.model.*
+import com.example.data.repository.interfaces.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
-object CreatorRepository {
+object CreatorRepository :
+    AuthRepository,
+    ChannelRepository,
+    ContentRepository,
+    ProductRepository,
+    RightsRepository,
+    MarketplaceRepository,
+    SubscriptionRepository,
+    RevenueRepository,
+    AudienceRepository,
+    MediaRepository,
+    CreatorAIRepository,
+    NotificationRepository,
+    SettingsRepository,
+    CreatorProfileRepository {
 
-    // Current User & Profile
+    // -------------------------------------------------------------------------
+    // Auth & Session State
+    // -------------------------------------------------------------------------
     private val _currentUser = MutableStateFlow(
         UserReference(
             id = "usr_elena",
@@ -18,8 +35,24 @@ object CreatorRepository {
             isCreator = true
         )
     )
-    val currentUser: StateFlow<UserReference> = _currentUser.asStateFlow()
+    override val currentUser: StateFlow<UserReference> = _currentUser.asStateFlow()
 
+    private val _authState = MutableStateFlow<AuthState>(
+        AuthState.Authenticated(
+            user = _currentUser.value,
+            isCreator = true,
+            hasCompletedOnboarding = true
+        )
+    )
+    override val authState: StateFlow<AuthState> = _authState.asStateFlow()
+
+    // Mode Switcher: True = Creator Mode, False = Consumer Mode
+    private val _isCreatorMode = MutableStateFlow(true)
+    override val isCreatorMode: StateFlow<Boolean> = _isCreatorMode.asStateFlow()
+
+    // -------------------------------------------------------------------------
+    // Creator Account & Profile
+    // -------------------------------------------------------------------------
     private val _creatorAccount = MutableStateFlow(
         CreatorAccount(
             id = "acc_elena_01",
@@ -31,7 +64,7 @@ object CreatorRepository {
             onboardingCompleted = true
         )
     )
-    val creatorAccount: StateFlow<CreatorAccount> = _creatorAccount.asStateFlow()
+    override val creatorAccount: StateFlow<CreatorAccount> = _creatorAccount.asStateFlow()
 
     private val _creatorProfile = MutableStateFlow(
         CreatorProfile(
@@ -45,17 +78,14 @@ object CreatorRepository {
             subscriberCount = 920
         )
     )
-    val creatorProfile: StateFlow<CreatorProfile> = _creatorProfile.asStateFlow()
+    override val creatorProfile: StateFlow<CreatorProfile> = _creatorProfile.asStateFlow()
 
-    // Mode Switcher: True = Creator Mode, False = Consumer Mode
-    private val _isCreatorMode = MutableStateFlow(true)
-    val isCreatorMode: StateFlow<Boolean> = _isCreatorMode.asStateFlow()
-
-    // Channel Context: null = All Channels
+    // -------------------------------------------------------------------------
+    // Channel Context & Channels
+    // -------------------------------------------------------------------------
     private val _selectedChannelId = MutableStateFlow<String?>(null)
-    val selectedChannelId: StateFlow<String?> = _selectedChannelId.asStateFlow()
+    override val selectedChannelId: StateFlow<String?> = _selectedChannelId.asStateFlow()
 
-    // Channels
     private val _channels = MutableStateFlow(
         listOf(
             Channel(
@@ -106,9 +136,16 @@ object CreatorRepository {
             )
         )
     )
-    val channels: StateFlow<List<Channel>> = _channels.asStateFlow()
+    override val channels: StateFlow<List<Channel>> = _channels.asStateFlow()
 
-    // Content Items
+    // -------------------------------------------------------------------------
+    // Content Items & Preservation Drafts
+    // -------------------------------------------------------------------------
+    override var draftContentTitle: String = ""
+    override var draftContentBody: String = ""
+    override var draftContentType: ContentType = ContentType.ARTICLE
+    override var draftContentAccessType: AccessType = AccessType.PUBLIC
+
     private val _contentItems = MutableStateFlow(
         listOf(
             ContentItem(
@@ -128,6 +165,7 @@ object CreatorRepository {
                 likesCount = 348,
                 commentsCount = 42,
                 isLiked = true,
+                isSaved = true,
                 comments = listOf(
                     ContentComment("c_1", "Marcus Vance", "🎧", "The rim light tip completely changed my setup today Elena!", "1 hour ago", 8),
                     ContentComment("c_2", "Sarah Lin", "🎨", "Do you shoot this with spot metering or center-weighted?", "45 mins ago", 3)
@@ -149,7 +187,8 @@ object CreatorRepository {
                 publishedDate = "Yesterday",
                 likesCount = 512,
                 commentsCount = 68,
-                isUnlocked = true
+                isUnlocked = true,
+                isSaved = false
             ),
             ContentItem(
                 id = "post_3",
@@ -166,7 +205,8 @@ object CreatorRepository {
                 accessType = AccessType.PUBLIC,
                 publishedDate = "3 days ago",
                 likesCount = 890,
-                commentsCount = 114
+                commentsCount = 114,
+                isSaved = true
             ),
             ContentItem(
                 id = "post_4",
@@ -183,13 +223,23 @@ object CreatorRepository {
                 publishedDate = "5 days ago",
                 likesCount = 230,
                 commentsCount = 19,
-                isUnlocked = true
+                isUnlocked = true,
+                isSaved = false
             )
         )
     )
-    val contentItems: StateFlow<List<ContentItem>> = _contentItems.asStateFlow()
+    override val contentItems: StateFlow<List<ContentItem>> = _contentItems.asStateFlow()
 
-    // Products
+    // -------------------------------------------------------------------------
+    // Products & Product Drafts
+    // -------------------------------------------------------------------------
+    override var draftProductTitle: String = ""
+    override var draftProductDescription: String = ""
+    override var draftProductPrice: String = "29.00"
+    override var draftProductCategory: String = "Photography & Lighting"
+    override var draftProductType: ProductType = ProductType.DIGITAL_PRODUCT
+    override var draftProductDeliverables: String = "PDF Guide, Preset Bundle"
+
     private val _products = MutableStateFlow(
         listOf(
             CreatorProduct(
@@ -281,9 +331,124 @@ object CreatorRepository {
             )
         )
     )
-    val products: StateFlow<List<CreatorProduct>> = _products.asStateFlow()
+    override val products: StateFlow<List<CreatorProduct>> = _products.asStateFlow()
 
-    // Subscription Plans
+    // -------------------------------------------------------------------------
+    // Digital Product Rights (DPR)
+    // -------------------------------------------------------------------------
+    private val _rightsRecords = MutableStateFlow(
+        listOf(
+            RightsRecord("r_101", "2026-03-15", "Somuleco Commercial Pro License", allowDownload = true, allowCommercialUse = true),
+            RightsRecord("r_102", "2026-04-10", "Standard Creator Asset License", allowDownload = true, allowCommercialUse = true),
+            RightsRecord("r_103", "2026-05-01", "Personal Learning License", allowDownload = true, allowCommercialUse = false)
+        )
+    )
+    override val rightsRecords: StateFlow<List<RightsRecord>> = _rightsRecords.asStateFlow()
+
+    private val _productRightsMap = MutableStateFlow<Map<String, ProductRightsConfig>>(
+        mapOf(
+            "prod_1" to ProductRightsConfig(
+                productId = "prod_1",
+                productTitle = "Complete Wedding & Portrait Business Guide",
+                certificateId = "DPR-CERT-8842-PROD1",
+                registeredOwner = "Elena Rostova (Somuleco Passport #9921)",
+                allowCommercialUse = true,
+                allowRedistribution = false,
+                allowModification = true,
+                licenseType = "Somuleco Commercial Pro License v2.4",
+                registrationTimestamp = "2026-03-15T14:30:00Z"
+            ),
+            "prod_2" to ProductRightsConfig(
+                productId = "prod_2",
+                productTitle = "Cinematic Daylight Lightroom & Capture One Presets",
+                certificateId = "DPR-CERT-9104-PROD2",
+                registeredOwner = "Elena Rostova (Somuleco Passport #9921)",
+                allowCommercialUse = true,
+                allowRedistribution = false,
+                allowModification = false,
+                licenseType = "Standard Creator Asset License v1.2",
+                registrationTimestamp = "2026-04-10T09:15:00Z"
+            ),
+            "prod_3" to ProductRightsConfig(
+                productId = "prod_3",
+                productTitle = "Camera Settings Cheat Sheets & Pocket Cards",
+                certificateId = "DPR-CERT-9452-PROD3",
+                registeredOwner = "Elena Rostova (Somuleco Passport #9921)",
+                allowCommercialUse = false,
+                allowRedistribution = false,
+                allowModification = false,
+                licenseType = "Personal Learning Non-Commercial License",
+                registrationTimestamp = "2026-05-01T16:45:00Z"
+            )
+        )
+    )
+
+    override fun getProductRights(productId: String): ProductRightsConfig? {
+        return _productRightsMap.value[productId] ?: _products.value.find { it.id == productId }?.let {
+            ProductRightsConfig(
+                productId = it.id,
+                productTitle = it.title,
+                certificateId = "DPR-CERT-${it.id.uppercase()}",
+                registeredOwner = _creatorProfile.value.displayName
+            )
+        }
+    }
+
+    override fun updateProductRights(config: ProductRightsConfig) {
+        _productRightsMap.value = _productRightsMap.value + (config.productId to config)
+        _products.value = _products.value.map { prod ->
+            if (prod.id == config.productId) {
+                prod.copy(
+                    rightsRecord = prod.rightsRecord.copy(
+                        licenseName = config.licenseType,
+                        allowCommercialUse = config.allowCommercialUse,
+                        allowModification = config.allowModification,
+                        allowAiTraining = config.allowAiTraining
+                    )
+                )
+            } else prod
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Marketplace Publishing
+    // -------------------------------------------------------------------------
+    private val _marketplaceMap = MutableStateFlow<Map<String, MarketplaceListing>>(
+        mapOf(
+            "prod_1" to MarketplaceListing("prod_1", "Complete Wedding & Portrait Business Guide", true, 49.0),
+            "prod_2" to MarketplaceListing("prod_2", "Cinematic Daylight Lightroom & Capture One Presets", true, 29.0),
+            "prod_3" to MarketplaceListing("prod_3", "Camera Settings Cheat Sheets & Pocket Cards", false, 14.0)
+        )
+    )
+
+    override fun getMarketplaceListing(productId: String): MarketplaceListing {
+        return _marketplaceMap.value[productId] ?: run {
+            val prod = getProduct(productId)
+            MarketplaceListing(
+                productId = productId,
+                productTitle = prod?.title ?: "Digital Product",
+                listingPrice = prod?.priceAmount ?: 29.0
+            )
+        }
+    }
+
+    override fun updateMarketplaceListing(listing: MarketplaceListing) {
+        _marketplaceMap.value = _marketplaceMap.value + (listing.productId to listing)
+    }
+
+    override fun togglePublishMarketplace(productId: String): MarketplaceListing {
+        val current = getMarketplaceListing(productId)
+        val updated = current.copy(
+            isPublished = !current.isPublished,
+            lastSyncedAt = "Just now"
+        )
+        updateMarketplaceListing(updated)
+        return updated
+    }
+
+    // -------------------------------------------------------------------------
+    // Subscriptions & Plans
+    // -------------------------------------------------------------------------
     private val _subscriptionPlan = MutableStateFlow(
         SubscriptionPlan(
             id = "plan_elena",
@@ -322,9 +487,95 @@ object CreatorRepository {
             activeTierId = "tier_insider"
         )
     )
-    val subscriptionPlan: StateFlow<SubscriptionPlan> = _subscriptionPlan.asStateFlow()
+    override val subscriptionPlan: StateFlow<SubscriptionPlan> = _subscriptionPlan.asStateFlow()
 
-    // Subscribers List
+    private val _creatorSubscriptionPlans = MutableStateFlow(
+        listOf(
+            CreatorSubscriptionPlanItem(
+                id = "plan_tier_free",
+                name = "Free Community Access",
+                monthlyPrice = 0.0,
+                isFree = true,
+                benefits = listOf("Public channel posts", "Community questions", "Weekly highlights"),
+                subscriberCount = 11560,
+                badgeColorHex = 0xFF64748B
+            ),
+            CreatorSubscriptionPlanItem(
+                id = "plan_tier_insider",
+                name = "Creator Insider Tier",
+                monthlyPrice = 9.0,
+                benefits = listOf("Full masterclasses", "Downloadable practice files", "Monthly AMA live", "20% Store discount"),
+                subscriberCount = 710,
+                isActive = true,
+                badgeColorHex = 0xFF7C3AED
+            ),
+            CreatorSubscriptionPlanItem(
+                id = "plan_tier_pro",
+                name = "Studio Pro Mentorship",
+                monthlyPrice = 39.0,
+                benefits = listOf("All Insider benefits", "Quarterly portfolio video review", "Direct message priority", "Free new releases"),
+                subscriberCount = 210,
+                isActive = true,
+                badgeColorHex = 0xFF2563EB
+            )
+        )
+    )
+    override val creatorSubscriptionPlans: StateFlow<List<CreatorSubscriptionPlanItem>> = _creatorSubscriptionPlans.asStateFlow()
+
+    private val _userSubscriptions = MutableStateFlow(
+        listOf(
+            UserSubscription(
+                id = "usub_1",
+                creatorId = "usr_elena",
+                creatorName = "Elena Rostova",
+                creatorHandle = "@elenarostova",
+                avatarEmoji = "📸",
+                tierName = "Creator Insider",
+                monthlyPrice = 9.0,
+                nextBillingDate = "Oct 01, 2026",
+                status = "ACTIVE",
+                benefitsSummary = "Masterclass tutorials, RAW practice downloads & community perks"
+            ),
+            UserSubscription(
+                id = "usub_2",
+                creatorId = "usr_marcus",
+                creatorName = "Marcus Vance",
+                creatorHandle = "@marcusvance",
+                avatarEmoji = "🎧",
+                tierName = "Sound Designer Pro",
+                monthlyPrice = 14.0,
+                nextBillingDate = "Oct 12, 2026",
+                status = "ACTIVE",
+                benefitsSummary = "Monthly audio stems, Ableton templates & sound design presets"
+            )
+        )
+    )
+    override val userSubscriptions: StateFlow<List<UserSubscription>> = _userSubscriptions.asStateFlow()
+
+    override fun createSubscriptionPlan(plan: CreatorSubscriptionPlanItem) {
+        _creatorSubscriptionPlans.value = _creatorSubscriptionPlans.value + plan
+        val newTier = MembershipTier(
+            id = plan.id,
+            name = plan.name,
+            monthlyPrice = plan.monthlyPrice,
+            description = plan.benefits.joinToString(", ").ifBlank { "Member exclusive benefits" },
+            perks = plan.benefits
+        )
+        _subscriptionPlan.value = _subscriptionPlan.value.copy(
+            tiers = _subscriptionPlan.value.tiers + newTier
+        )
+    }
+
+    override fun updateSubscriptionPlan(plan: CreatorSubscriptionPlanItem) {
+        _creatorSubscriptionPlans.value = _creatorSubscriptionPlans.value.map {
+            if (it.id == plan.id) plan else it
+        }
+    }
+
+    override fun cancelUserSubscription(id: String) {
+        _userSubscriptions.value = _userSubscriptions.value.filterNot { it.id == id }
+    }
+
     private val _subscribers = MutableStateFlow(
         listOf(
             SubscriberMember("sub_1", "Marcus Vance", "@marcusvance", "🎧", "Studio Pro Mentorship", 39.0, "Joined 4 months ago"),
@@ -335,22 +586,17 @@ object CreatorRepository {
         )
     )
     val subscribers: StateFlow<List<SubscriberMember>> = _subscribers.asStateFlow()
+    override val subscriberMembers: StateFlow<List<SubscriberMember>> = _subscribers.asStateFlow()
 
-    // Analytics Overview
-    private val _analytics = MutableStateFlow(AnalyticsOverview())
-    val analytics: StateFlow<AnalyticsOverview> = _analytics.asStateFlow()
+    // -------------------------------------------------------------------------
+    // Revenue & Transactions
+    // -------------------------------------------------------------------------
+    override val totalRevenue: Double get() = 18450.0
+    override val availableBalance: Double get() = 7820.0
+    override val pendingBalance: Double get() = 1430.0
+    override val monthlyRecurringRevenue: Double get() = 8190.0
+    override val productSalesRevenue: Double get() = 10260.0
 
-    // Top Content Performance
-    private val _topContent = MutableStateFlow(
-        listOf(
-            TopContentPerformance("tc_1", "The 3 Golden Rules of Golden Hour", "Photography Masterclass", "34.8K views", "6.2% follow rate", 480, "Article"),
-            TopContentPerformance("tc_2", "Stop Buying Lenses Until You Understand Focal Length", "Beginner Photography", "58.2K views", "8.9% follow rate", 820, "Quick Tip"),
-            TopContentPerformance("tc_3", "1-Light Editorial Portrait Walkthrough", "Photography Masterclass", "22.1K views", "14.1% subscriber conversion", 140, "Video")
-        )
-    )
-    val topContent: StateFlow<List<TopContentPerformance>> = _topContent.asStateFlow()
-
-    // Transactions
     private val _transactions = MutableStateFlow(
         listOf(
             TransactionItem("tx_1", "Today, 14:20", "Liam O'Connor", "Wedding & Portrait Business Guide", 49.0, 2.45, 46.55, status = "COMPLETED", source = "Digital Product"),
@@ -360,9 +606,86 @@ object CreatorRepository {
             TransactionItem("tx_5", "Sep 04", "Marcus Vance", "Creator Insider (Renewal)", 9.0, 0.45, 8.55, status = "COMPLETED", source = "Subscription")
         )
     )
-    val transactions: StateFlow<List<TransactionItem>> = _transactions.asStateFlow()
+    override val transactions: StateFlow<List<RevenueTransaction>> = _transactions.asStateFlow()
 
-    // Creator AI Recommendations
+    override fun getTransaction(id: String): RevenueTransaction? {
+        return _transactions.value.find { it.id == id }
+    }
+
+    // -------------------------------------------------------------------------
+    // Audience & Relationships
+    // -------------------------------------------------------------------------
+    private val _analytics = MutableStateFlow(AnalyticsOverview())
+    val analytics: StateFlow<AnalyticsOverview> = _analytics.asStateFlow()
+
+    private val _topContent = MutableStateFlow(
+        listOf(
+            TopContentPerformance("tc_1", "The 3 Golden Rules of Golden Hour", "Photography Masterclass", "34.8K views", "6.2% follow rate", 480, "Article"),
+            TopContentPerformance("tc_2", "Stop Buying Lenses Until You Understand Focal Length", "Beginner Photography", "58.2K views", "8.9% follow rate", 820, "Quick Tip"),
+            TopContentPerformance("tc_3", "1-Light Editorial Portrait Walkthrough", "Photography Masterclass", "22.1K views", "14.1% subscriber conversion", 140, "Video")
+        )
+    )
+    val topContent: StateFlow<List<TopContentPerformance>> = _topContent.asStateFlow()
+
+    private val _audienceMetrics = MutableStateFlow(AudienceMetrics())
+    override val audienceMetrics: StateFlow<AudienceMetrics> = _audienceMetrics.asStateFlow()
+
+    private val _topReferrers = MutableStateFlow(
+        listOf(
+            TrafficSource("Somuleco Discover", "44%", "8,120 visitors", "🌐"),
+            TrafficSource("Creator Profile Link", "28%", "5,180 visitors", "🔗"),
+            TrafficSource("YouTube Video Description", "18%", "3,320 visitors", "▶️"),
+            TrafficSource("Direct & Email Newsletter", "10%", "1,840 visitors", "✉️")
+        )
+    )
+    override val topReferrers: StateFlow<List<TrafficSource>> = _topReferrers.asStateFlow()
+
+    private val _segments = MutableStateFlow(
+        listOf(
+            AudienceSegment("seg_1", "Highly Engaged Learners", 420, "Consistently read articles & bookmark tips", "18.2%"),
+            AudienceSegment("seg_2", "Gear & Equipment Enthusiasts", 890, "Interact primarily with focal length and camera cheat sheets", "12.4%"),
+            AudienceSegment("seg_3", "Active Masterclass Subscribers", 920, "Paying monthly recurring members with high retention", "94.2%"),
+            AudienceSegment("seg_4", "Casual Discovery Visitors", 12480, "Free followers browsing public feed content", "4.8%")
+        )
+    )
+    override val segments: StateFlow<List<AudienceSegment>> = _segments.asStateFlow()
+
+    // -------------------------------------------------------------------------
+    // Media Library
+    // -------------------------------------------------------------------------
+    private val _mediaAssets = MutableStateFlow(
+        listOf(
+            MediaAsset("med_1", "Golden Hour Sunburst Proof", "IMG_8921_raw.jpg", MediaType.IMAGE, "28.4 MB", uploadDate = "Today", channelName = "Photography Masterclass"),
+            MediaAsset("med_2", "1-Light Studio Masterclass Reel", "studio_lighting_4k.mp4", MediaType.VIDEO, "1.4 GB", durationText = "42:15", uploadDate = "Yesterday", channelName = "Photography Masterclass"),
+            MediaAsset("med_3", "Portrait Contract Template", "wedding_client_contract_v3.pdf", MediaType.DOCUMENT, "2.1 MB", uploadDate = "Sep 02", channelName = "Beginner Photography"),
+            MediaAsset("med_4", "Studio Audio Podcast Ep 12", "creative_struggles_audio.wav", MediaType.AUDIO, "84.2 MB", durationText = "28:40", uploadDate = "Aug 29", channelName = "Behind the Scenes & Studio")
+        )
+    )
+    override val mediaAssets: StateFlow<List<MediaAsset>> = _mediaAssets.asStateFlow()
+    val mediaItems: StateFlow<List<MediaAsset>> = _mediaAssets.asStateFlow()
+
+    override fun uploadMedia(name: String, type: MediaType, size: String, channelName: String): MediaAsset {
+        val asset = MediaAsset(
+            id = "med_${System.currentTimeMillis()}",
+            title = name,
+            fileName = name,
+            type = type,
+            sizeText = size,
+            uploadDate = "Just now",
+            channelName = channelName,
+            status = "READY"
+        )
+        _mediaAssets.value = listOf(asset) + _mediaAssets.value
+        return asset
+    }
+
+    override fun deleteMedia(id: String) {
+        _mediaAssets.value = _mediaAssets.value.filterNot { it.id == id }
+    }
+
+    // -------------------------------------------------------------------------
+    // Creator AI
+    // -------------------------------------------------------------------------
     private val _recommendations = MutableStateFlow(
         listOf(
             CreatorRecommendation(
@@ -393,7 +716,6 @@ object CreatorRepository {
     )
     val recommendations: StateFlow<List<CreatorRecommendation>> = _recommendations.asStateFlow()
 
-    // Creator AI Messages
     private val _aiMessages = MutableStateFlow(
         listOf(
             AIMessage(
@@ -420,8 +742,23 @@ object CreatorRepository {
         )
     )
     val aiMessages: StateFlow<List<AIMessage>> = _aiMessages.asStateFlow()
+    override val chatMessages: StateFlow<List<AIMessage>> = _aiMessages.asStateFlow()
 
+    override val suggestedPrompts: List<String> = listOf(
+        "Analyze this week's revenue and churn risks",
+        "Generate a lesson outline for Photography Masterclass",
+        "Draft a commercial license for my preset bundle",
+        "Suggest ideas to convert free followers to paid subscribers"
+    )
+
+    override suspend fun sendMessage(userText: String): String {
+        sendAIMessage(userText)
+        return _aiMessages.value.lastOrNull()?.content ?: "Response generated."
+    }
+
+    // -------------------------------------------------------------------------
     // Notifications
+    // -------------------------------------------------------------------------
     private val _notifications = MutableStateFlow(
         listOf(
             NotificationItem("notif_1", "New Studio Pro Subscriber!", "Sophia Rossi subscribed to Studio Pro Mentorship ($39/mo)", "20 mins ago", NotificationType.SUBSCRIBER),
@@ -430,21 +767,34 @@ object CreatorRepository {
             NotificationItem("notif_4", "Creator AI Recommendation", "New insight available: Convert high-performing beginner content to product", "2 days ago", NotificationType.AI_RECOMMENDATION)
         )
     )
-    val notifications: StateFlow<List<NotificationItem>> = _notifications.asStateFlow()
+    override val notifications: StateFlow<List<NotificationItem>> = _notifications.asStateFlow()
 
-    // Media Assets
-    private val _mediaAssets = MutableStateFlow(
-        listOf(
-            MediaAsset("med_1", "Golden Hour Sunburst Proof", "IMG_8921_raw.jpg", MediaType.IMAGE, "28.4 MB", uploadDate = "Today", channelName = "Photography Masterclass"),
-            MediaAsset("med_2", "1-Light Studio Masterclass Reel", "studio_lighting_4k.mp4", MediaType.VIDEO, "1.4 GB", durationText = "42:15", uploadDate = "Yesterday", channelName = "Photography Masterclass"),
-            MediaAsset("med_3", "Portrait Contract Template", "wedding_client_contract_v3.pdf", MediaType.DOCUMENT, "2.1 MB", uploadDate = "Sep 02", channelName = "Beginner Photography"),
-            MediaAsset("med_4", "Studio Audio Podcast Ep 12", "creative_struggles_audio.wav", MediaType.AUDIO, "84.2 MB", durationText = "28:40", uploadDate = "Aug 29", channelName = "Behind the Scenes & Studio")
-        )
-    )
-    val mediaAssets: StateFlow<List<MediaAsset>> = _mediaAssets.asStateFlow()
-    val mediaItems: StateFlow<List<MediaAsset>> = _mediaAssets.asStateFlow()
+    override fun markAsRead(id: String) {
+        _notifications.value = _notifications.value.map { notif ->
+            if (notif.id == id) notif.copy(isRead = true) else notif
+        }
+    }
 
-    // Integrations
+    override fun markAllAsRead() {
+        _notifications.value = _notifications.value.map { it.copy(isRead = true) }
+    }
+
+    fun markNotificationRead(id: String) = markAsRead(id)
+    fun markAllNotificationsRead() = markAllAsRead()
+
+    // -------------------------------------------------------------------------
+    // Settings
+    // -------------------------------------------------------------------------
+    private val _settings = MutableStateFlow(CreatorSettingsData())
+    override val settings: StateFlow<CreatorSettingsData> = _settings.asStateFlow()
+
+    override fun updateSettings(settings: CreatorSettingsData) {
+        _settings.value = settings
+    }
+
+    // -------------------------------------------------------------------------
+    // Integrations & Goals
+    // -------------------------------------------------------------------------
     private val _integrations = MutableStateFlow(
         listOf(
             CreatorIntegration("int_1", "Somuleco Passport", "ECOSYSTEM", "Portable creator identity and reputation verification across Somuleco.", "🛡️", true),
@@ -454,9 +804,30 @@ object CreatorRepository {
             CreatorIntegration("int_5", "Dropbox Cloud Storage", "STORAGE", "Sync RAW photo catalogs and project deliveries.", "📦", true)
         )
     )
-    val integrations: StateFlow<List<CreatorIntegration>> = _integrations.asStateFlow()
+    override val integrations: StateFlow<List<CreatorIntegration>> = _integrations.asStateFlow()
 
-    // Standalone Comments for Post Discussions
+    private val _goals = MutableStateFlow(
+        listOf(
+            CreatorGoal("g_1", "Reach 1,000 Paid Subscribers", "1,000", "Dec 2026", isAchieved = false, progress = 0.84f),
+            CreatorGoal("g_2", "Earn $25,000 Monthly Revenue", "$25K/mo", "Nov 2026", isAchieved = false, progress = 0.74f),
+            CreatorGoal("g_3", "Publish 50 Masterclass Lessons", "50 Lessons", "Oct 2026", isAchieved = true, progress = 1.0f)
+        )
+    )
+    override val goals: StateFlow<List<CreatorGoal>> = _goals.asStateFlow()
+
+    override fun updateProfile(profile: CreatorProfile) {
+        _creatorProfile.value = profile
+    }
+
+    override fun toggleIntegration(id: String) {
+        _integrations.value = _integrations.value.map {
+            if (it.id == id) it.copy(isConnected = !it.isConnected) else it
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Standalone Comments
+    // -------------------------------------------------------------------------
     private val _comments = MutableStateFlow(
         listOf(
             ContentComment("c_1", "Marcus Vance", "🎧", "The rim light tip completely changed my setup today Elena!", "1 hour ago", 8),
@@ -466,106 +837,77 @@ object CreatorRepository {
     )
     val comments: StateFlow<List<ContentComment>> = _comments.asStateFlow()
 
-    // Goals
-    private val _goals = MutableStateFlow(
-        listOf(
-            CreatorGoal("g_1", "Reach 1,000 Paid Subscribers", "1,000", "Dec 2026", isAchieved = false, progress = 0.84f),
-            CreatorGoal("g_2", "Earn $25,000 Monthly Revenue", "$25K/mo", "Nov 2026", isAchieved = false, progress = 0.74f),
-            CreatorGoal("g_3", "Publish 50 Masterclass Lessons", "50 Lessons", "Oct 2026", isAchieved = true, progress = 1.0f)
+    // -------------------------------------------------------------------------
+    // AuthRepository Implementation
+    // -------------------------------------------------------------------------
+    override suspend fun login(email: String, password: String): Result<UserReference> {
+        val user = _currentUser.value
+        _authState.value = AuthState.Authenticated(
+            user = user,
+            isCreator = user.isCreator,
+            hasCompletedOnboarding = true
         )
-    )
-    val goals: StateFlow<List<CreatorGoal>> = _goals.asStateFlow()
+        return Result.success(user)
+    }
 
-    // --- Interactive Action Methods ---
+    override suspend fun signup(name: String, email: String, password: String): Result<UserReference> {
+        val newUser = UserReference(
+            id = "usr_${System.currentTimeMillis()}",
+            displayName = name,
+            username = name.lowercase().replace(" ", "_"),
+            email = email,
+            isCreator = true
+        )
+        _currentUser.value = newUser
+        _authState.value = AuthState.Authenticated(
+            user = newUser,
+            isCreator = true,
+            hasCompletedOnboarding = false
+        )
+        return Result.success(newUser)
+    }
 
-    fun toggleCreatorMode() {
+    override suspend fun verifyEmail(code: String): Result<Boolean> = Result.success(true)
+
+    override suspend fun forgotPassword(email: String): Result<Boolean> = Result.success(true)
+
+    override suspend fun resetPassword(token: String, newPassword: String): Result<Boolean> = Result.success(true)
+
+    override suspend fun logout() {
+        _authState.value = AuthState.Unauthenticated
+    }
+
+    override fun setCreatorMode(enabled: Boolean) {
+        _isCreatorMode.value = enabled
+    }
+
+    override fun toggleCreatorMode() {
         _isCreatorMode.value = !_isCreatorMode.value
     }
 
-    fun setCreatorMode(isCreator: Boolean) {
-        _isCreatorMode.value = isCreator
-    }
-
-    fun selectChannelContext(channelId: String?) {
-        _selectedChannelId.value = channelId
-    }
-
-    fun setSelectedChannel(channelId: String?) {
-        selectChannelContext(channelId)
-    }
-
-    fun toggleIntegration(id: String) {
-        _integrations.value = _integrations.value.map {
-            if (it.id == id) it.copy(isConnected = !it.isConnected) else it
+    override fun completeOnboarding() {
+        val current = _authState.value
+        if (current is AuthState.Authenticated) {
+            _authState.value = current.copy(hasCompletedOnboarding = true)
         }
     }
 
-    fun uploadMediaItem(name: String, typeStr: String, sizeStr: String, channelName: String) {
-        val mType = when (typeStr.uppercase()) {
-            "VIDEO" -> MediaType.VIDEO
-            "AUDIO" -> MediaType.AUDIO
-            "DOCUMENT" -> MediaType.DOCUMENT
-            else -> MediaType.IMAGE
-        }
-        val asset = MediaAsset(
-            id = "med_${System.currentTimeMillis()}",
-            title = name,
-            fileName = name,
-            type = mType,
-            sizeText = sizeStr,
-            uploadDate = "Just now",
-            channelName = channelName
-        )
-        _mediaAssets.value = listOf(asset) + _mediaAssets.value
+    // -------------------------------------------------------------------------
+    // ChannelRepository Implementation
+    // -------------------------------------------------------------------------
+    override fun selectChannel(id: String?) {
+        _selectedChannelId.value = id
     }
 
-    fun addComment(text: String) {
-        val newComment = ContentComment(
-            id = UUID.randomUUID().toString(),
-            authorName = _currentUser.value.displayName,
-            authorEmoji = "✨",
-            text = text,
-            timestamp = "Just now"
-        )
-        _comments.value = _comments.value + newComment
+    fun selectChannelContext(channelId: String?) = selectChannel(channelId)
+    fun setSelectedChannel(channelId: String?) = selectChannel(channelId)
+
+    override fun getChannel(id: String): Channel? {
+        return _channels.value.find { it.id == id }
     }
 
-    fun toggleLike(contentId: String) {
-        _contentItems.value = _contentItems.value.map { item ->
-            if (item.id == contentId) {
-                val newLiked = !item.isLiked
-                item.copy(
-                    isLiked = newLiked,
-                    likesCount = if (newLiked) item.likesCount + 1 else item.likesCount - 1
-                )
-            } else item
-        }
-    }
-
-    fun toggleSave(contentId: String) {
-        _contentItems.value = _contentItems.value.map { item ->
-            if (item.id == contentId) {
-                item.copy(isSaved = !item.isSaved)
-            } else item
-        }
-    }
-
-    fun addComment(contentId: String, text: String) {
-        val newComment = ContentComment(
-            id = UUID.randomUUID().toString(),
-            authorName = _currentUser.value.displayName,
-            authorEmoji = "✨",
-            text = text,
-            timestamp = "Just now"
-        )
-        _contentItems.value = _contentItems.value.map { item ->
-            if (item.id == contentId) {
-                item.copy(
-                    commentsCount = item.commentsCount + 1,
-                    comments = item.comments + newComment
-                )
-            } else item
-        }
+    override fun createChannel(name: String, description: String, category: String, handle: String): Channel {
+        return createChannel(name, description, category, handle, "✨")
     }
 
     fun createChannel(name: String, description: String, category: String, handle: String, iconEmoji: String = "✨"): Channel {
@@ -586,6 +928,49 @@ object CreatorRepository {
         )
         _channels.value = _channels.value + newChannel
         return newChannel
+    }
+
+    override fun toggleFollowChannel(channelId: String) {
+        followChannel(channelId)
+    }
+
+    fun followChannel(channelId: String) {
+        _channels.value = _channels.value.map { ch ->
+            if (ch.id == channelId) {
+                val newFollow = !ch.isFollowed
+                ch.copy(
+                    isFollowed = newFollow,
+                    followersCount = if (newFollow) ch.followersCount + 1 else ch.followersCount - 1
+                )
+            } else ch
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // ContentRepository Implementation
+    // -------------------------------------------------------------------------
+    override fun getContent(id: String): ContentItem? {
+        return _contentItems.value.find { it.id == id }
+    }
+
+    override fun publishContent(
+        title: String,
+        body: String,
+        type: ContentType,
+        access: AccessType,
+        channelId: String?,
+        tags: List<String>
+    ): ContentItem {
+        val targetChannelId = channelId ?: _channels.value.firstOrNull()?.id ?: "ch_1"
+        val summary = if (body.length > 120) body.take(120) + "..." else body
+        return createContentItem(
+            title = title,
+            body = body,
+            summary = summary,
+            channelId = targetChannelId,
+            contentType = type,
+            accessType = access
+        )
     }
 
     fun createContentItem(
@@ -616,11 +1001,96 @@ object CreatorRepository {
             commentsCount = 0
         )
         _contentItems.value = listOf(newItem) + _contentItems.value
-        // Update channel content count
         _channels.value = _channels.value.map { ch ->
             if (ch.id == channel.id) ch.copy(contentCount = ch.contentCount + 1) else ch
         }
         return newItem
+    }
+
+    override fun toggleLike(contentId: String) {
+        _contentItems.value = _contentItems.value.map { item ->
+            if (item.id == contentId) {
+                val newLiked = !item.isLiked
+                item.copy(
+                    isLiked = newLiked,
+                    likesCount = if (newLiked) item.likesCount + 1 else item.likesCount - 1
+                )
+            } else item
+        }
+    }
+
+    override fun toggleBookmark(contentId: String) {
+        toggleSave(contentId)
+    }
+
+    fun toggleSave(contentId: String) {
+        _contentItems.value = _contentItems.value.map { item ->
+            if (item.id == contentId) {
+                item.copy(isSaved = !item.isSaved)
+            } else item
+        }
+    }
+
+    override fun addComment(contentId: String, text: String) {
+        val newComment = ContentComment(
+            id = UUID.randomUUID().toString(),
+            authorName = _currentUser.value.displayName,
+            authorEmoji = "✨",
+            text = text,
+            timestamp = "Just now"
+        )
+        _contentItems.value = _contentItems.value.map { item ->
+            if (item.id == contentId) {
+                item.copy(
+                    commentsCount = item.commentsCount + 1,
+                    comments = item.comments + newComment
+                )
+            } else item
+        }
+    }
+
+    fun addComment(text: String) {
+        val newComment = ContentComment(
+            id = UUID.randomUUID().toString(),
+            authorName = _currentUser.value.displayName,
+            authorEmoji = "✨",
+            text = text,
+            timestamp = "Just now"
+        )
+        _comments.value = _comments.value + newComment
+    }
+
+    // -------------------------------------------------------------------------
+    // ProductRepository Implementation
+    // -------------------------------------------------------------------------
+    override fun getProduct(id: String): CreatorProduct? {
+        return _products.value.find { it.id == id }
+    }
+
+    override fun createProduct(
+        title: String,
+        description: String,
+        price: Double,
+        category: String,
+        channelId: String?,
+        productType: ProductType,
+        deliverables: List<String>,
+        isDprProtected: Boolean
+    ): CreatorProduct {
+        val targetChannelId = channelId ?: _channels.value.firstOrNull()?.id ?: "ch_1"
+        val shortDesc = if (description.length > 100) description.take(100) + "..." else description
+        return createProduct(
+            title = title,
+            shortDescription = shortDesc,
+            fullDescription = description,
+            price = price,
+            channelId = targetChannelId,
+            productType = productType,
+            fileFormat = deliverables.joinToString(", ").ifBlank { "Digital Download" },
+            licenseName = if (isDprProtected) "Somuleco Verified DPR License" else "Standard License",
+            allowDownload = true,
+            allowCommercial = true
+        )
     }
 
     fun createProduct(
@@ -662,6 +1132,15 @@ object CreatorRepository {
             status = "ACTIVE"
         )
         _products.value = listOf(newProd) + _products.value
+
+        // Seed DPR config
+        _productRightsMap.value = _productRightsMap.value + (newProd.id to ProductRightsConfig(
+            productId = newProd.id,
+            productTitle = newProd.title,
+            certificateId = "DPR-CERT-${newProd.id.uppercase()}",
+            registeredOwner = _creatorProfile.value.displayName,
+            allowCommercialUse = allowCommercial
+        ))
 
         // Notify
         _notifications.value = listOf(
@@ -737,18 +1216,9 @@ object CreatorRepository {
         }
     }
 
-    fun followChannel(channelId: String) {
-        _channels.value = _channels.value.map { ch ->
-            if (ch.id == channelId) {
-                val newFollow = !ch.isFollowed
-                ch.copy(
-                    isFollowed = newFollow,
-                    followersCount = if (newFollow) ch.followersCount + 1 else ch.followersCount - 1
-                )
-            } else ch
-        }
-    }
-
+    // -------------------------------------------------------------------------
+    // AI Actions & Helpers
+    // -------------------------------------------------------------------------
     fun sendAIMessage(prompt: String) {
         val userMsg = AIMessage(
             id = UUID.randomUUID().toString(),
@@ -758,7 +1228,6 @@ object CreatorRepository {
         )
         _aiMessages.value = _aiMessages.value + userMsg
 
-        // Generate intelligent contextual response
         val assistantResponse = generateContextualAIResponse(prompt)
         _aiMessages.value = _aiMessages.value + assistantResponse
     }
@@ -813,26 +1282,22 @@ object CreatorRepository {
         }
     }
 
-    fun uploadMediaAsset(title: String, type: MediaType) {
-        val newAsset = MediaAsset(
-            id = "med_${System.currentTimeMillis()}",
-            title = title,
-            fileName = "${title.lowercase().replace(" ", "_")}.${if (type == MediaType.VIDEO) "mp4" else if (type == MediaType.AUDIO) "wav" else "jpg"}",
-            type = type,
-            sizeText = "18.2 MB",
-            uploadDate = "Just now",
-            status = "READY"
-        )
-        _mediaAssets.value = listOf(newAsset) + _mediaAssets.value
-    }
-
-    fun markNotificationRead(id: String) {
-        _notifications.value = _notifications.value.map { notif ->
-            if (notif.id == id) notif.copy(isRead = true) else notif
+    fun uploadMediaItem(name: String, typeStr: String, sizeStr: String, channelName: String) {
+        val mType = when (typeStr.uppercase()) {
+            "VIDEO" -> MediaType.VIDEO
+            "AUDIO" -> MediaType.AUDIO
+            "DOCUMENT" -> MediaType.DOCUMENT
+            else -> MediaType.IMAGE
         }
+        uploadMedia(name, mType, sizeStr, channelName)
     }
 
-    fun markAllNotificationsRead() {
-        _notifications.value = _notifications.value.map { it.copy(isRead = true) }
+    fun uploadMediaAsset(title: String, type: MediaType) {
+        uploadMedia(
+            name = title,
+            type = type,
+            size = "18.2 MB",
+            channelName = _channels.value.firstOrNull()?.name ?: "Photography Masterclass"
+        )
     }
 }

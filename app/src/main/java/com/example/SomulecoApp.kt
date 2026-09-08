@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.core.navigation.Screen
+import com.example.data.model.AuthState
 import com.example.data.repository.CreatorRepository
 import com.example.feature.auth.*
 import com.example.feature.consumer.*
 import com.example.feature.creator.ai.CreatorAIScreen
 import com.example.feature.creator.analytics.AnalyticsScreen
 import com.example.feature.creator.audience.AudienceScreen
+import com.example.feature.creator.channels.ChannelDetailScreen
 import com.example.feature.creator.channels.ChannelsScreen
 import com.example.feature.creator.content.ContentEditorScreen
 import com.example.feature.creator.content.ContentManagementScreen
@@ -29,12 +31,19 @@ import com.example.feature.creator.store.StoreScreen
 import com.example.feature.creator.subscribers.SubscribersScreen
 import com.example.feature.public.LandingScreen
 import com.example.feature.shell.CreatorShell
+import kotlinx.coroutines.launch
 
 @Composable
 fun SomulecoApp() {
+    val coroutineScope = rememberCoroutineScope()
+    val authState by CreatorRepository.authState.collectAsState()
+    val isCreatorMode by CreatorRepository.isCreatorMode.collectAsState()
+    val activeChannelId by CreatorRepository.selectedChannelId.collectAsState()
+
     var currentScreen by remember { mutableStateOf<Screen>(Screen.CreatorDashboard) }
     var selectedContentId by remember { mutableStateOf("content-1") }
     var selectedProductId by remember { mutableStateOf("prod-1") }
+    var selectedDetailChannelId by remember { mutableStateOf(activeChannelId ?: "ch_1") }
 
     // Full screen flows (without drawer shell)
     when (currentScreen) {
@@ -93,7 +102,12 @@ fun SomulecoApp() {
             CreatorShell(
                 currentScreen = currentScreen,
                 onNavigate = { currentScreen = it },
-                onSignOut = { currentScreen = Screen.Landing }
+                onSignOut = {
+                    coroutineScope.launch {
+                        CreatorRepository.logout()
+                    }
+                    currentScreen = Screen.Landing
+                }
             ) { paddingValues ->
                 Box(
                     modifier = Modifier
@@ -108,9 +122,17 @@ fun SomulecoApp() {
                             ChannelsScreen(
                                 onNavigate = { currentScreen = it },
                                 onOpenChannelDetail = { channelId ->
-                                    CreatorRepository.setSelectedChannel(channelId)
-                                    currentScreen = Screen.Content
+                                    CreatorRepository.selectChannel(channelId)
+                                    selectedDetailChannelId = channelId
+                                    currentScreen = Screen.ChannelDetail
                                 }
+                            )
+                        }
+                        Screen.ChannelDetail -> {
+                            ChannelDetailScreen(
+                                channelId = selectedDetailChannelId,
+                                onNavigate = { currentScreen = it },
+                                onBackClick = { currentScreen = Screen.Channels }
                             )
                         }
                         Screen.Content -> {
@@ -189,7 +211,7 @@ fun SomulecoApp() {
                             CreatorSettingsScreen(onNavigate = { currentScreen = it })
                         }
                         // Consumer views
-                        Screen.Home, Screen.Following -> {
+                        Screen.Home -> {
                             ConsumerHomeScreen(
                                 onNavigate = { currentScreen = it },
                                 onOpenContentDetail = { contentId ->
@@ -197,6 +219,15 @@ fun SomulecoApp() {
                                     currentScreen = Screen.ContentDetail
                                 },
                                 onOpenCreatorProfile = { currentScreen = Screen.CreatorProfileDetail }
+                            )
+                        }
+                        Screen.Following -> {
+                            FollowingScreen(
+                                onNavigate = { currentScreen = it },
+                                onOpenChannelDetail = { channelId ->
+                                    selectedDetailChannelId = channelId
+                                    currentScreen = Screen.ChannelDetail
+                                }
                             )
                         }
                         Screen.Explore -> {
@@ -254,12 +285,35 @@ fun SomulecoApp() {
                         Screen.SubscriptionPlansDetail -> {
                             SubscriptionPlansScreen(onNavigate = { currentScreen = it })
                         }
-                        Screen.Library, Screen.Purchases, Screen.Saved, Screen.Subscriptions -> {
+                        Screen.Library -> {
                             LibraryScreen(
                                 onNavigate = { currentScreen = it },
                                 onOpenProductDetail = { prodId ->
                                     selectedProductId = prodId
                                     currentScreen = Screen.ProductDetail
+                                }
+                            )
+                        }
+                        Screen.Purchases -> {
+                            PurchasesScreen(
+                                onNavigate = { currentScreen = it },
+                                onOpenProductDetail = { prodId ->
+                                    selectedProductId = prodId
+                                    currentScreen = Screen.ProductDetail
+                                }
+                            )
+                        }
+                        Screen.Subscriptions -> {
+                            SubscriptionsScreen(
+                                onNavigate = { currentScreen = it }
+                            )
+                        }
+                        Screen.Saved -> {
+                            SavedScreen(
+                                onNavigate = { currentScreen = it },
+                                onOpenContentDetail = { contentId ->
+                                    selectedContentId = contentId
+                                    currentScreen = Screen.ContentDetail
                                 }
                             )
                         }

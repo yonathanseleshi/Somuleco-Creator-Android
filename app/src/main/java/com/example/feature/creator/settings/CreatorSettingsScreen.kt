@@ -6,18 +6,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.core.navigation.Screen
+import com.example.data.model.CreatorSettingsData
 import com.example.data.repository.CreatorRepository
 import com.example.ui.theme.*
 
@@ -26,11 +26,13 @@ fun CreatorSettingsScreen(
     onNavigate: (Screen) -> Unit
 ) {
     val profile by CreatorRepository.creatorProfile.collectAsState()
+    val currentSettings by CreatorRepository.settings.collectAsState()
 
-    var autoDprProtect by remember { mutableStateOf(true) }
-    var emailNotifications by remember { mutableStateOf(true) }
-    var subscriberAlerts by remember { mutableStateOf(true) }
-    var publicProfileDiscoverable by remember { mutableStateOf(true) }
+    var autoDprProtect by remember(currentSettings) { mutableStateOf(currentSettings.autoDprProtect) }
+    var emailNotifications by remember(currentSettings) { mutableStateOf(currentSettings.weeklyDigestEmail) }
+    var subscriberAlerts by remember(currentSettings) { mutableStateOf(currentSettings.instantSubscriberAlerts) }
+    var publicProfileDiscoverable by remember(currentSettings) { mutableStateOf(currentSettings.publicDiscoverable) }
+    var saveMessage by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -44,6 +46,24 @@ fun CreatorSettingsScreen(
         Column {
             Text("Creator Workspace Settings", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("Configure publishing defaults, rights, and notifications", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+        }
+
+        saveMessage?.let { msg ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = SomulecoGreenSurface),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = SomulecoGreenText)
+                    Text(msg, style = MaterialTheme.typography.bodySmall, color = SomulecoGreenText, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { saveMessage = null }) { Text("Dismiss", color = SomulecoGreenText) }
+                }
+            }
         }
 
         // Creator Profile Card
@@ -99,6 +119,26 @@ fun CreatorSettingsScreen(
                 Text("Stripe Connected Account: Chase Bank (•••• 4921)", style = MaterialTheme.typography.bodyMedium)
                 Text("Automatic payouts sent on the 1st and 15th of each month.", style = MaterialTheme.typography.bodySmall, color = SomulecoGreenText)
             }
+        }
+
+        Button(
+            onClick = {
+                CreatorRepository.updateSettings(
+                    currentSettings.copy(
+                        autoDprProtect = autoDprProtect,
+                        weeklyDigestEmail = emailNotifications,
+                        instantSubscriberAlerts = subscriberAlerts,
+                        publicDiscoverable = publicProfileDiscoverable
+                    )
+                )
+                saveMessage = "Workspace settings successfully updated."
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = SomulecoBlue)
+        ) {
+            Text("Save Settings", fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
