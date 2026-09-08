@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.somuleco.creator"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.somuleco.creator"
+    applicationId = "com.somuleco.creator"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
@@ -40,13 +40,42 @@ android {
   }
 
   buildTypes {
+    // `release` maps to the "production" conceptual environment: it points at the
+    // documented (currently placeholder, not-yet-provisioned) production API hosts.
     release {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
+      buildConfigField(
+        "String",
+        "CORE_API_BASE_URL",
+        "\"https://api.somuleco.com/v1/\"",
+      )
+      buildConfigField(
+        "String",
+        "AI_API_BASE_URL",
+        "\"https://ai.somuleco.com/v1/\"",
+      )
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    // `debug` maps to the "local/dev" conceptual environment: it targets a NestJS
+    // Core API and a FastAPI Creator AI service both running on the developer's host
+    // machine, reached via the Android emulator's host-loopback alias (10.0.2.2).
+    // A physical device on the same network must override these via a local.properties-
+    // driven mechanism if/when one is introduced; not needed for Wave 02 scope.
+    debug {
+      signingConfig = signingConfigs.getByName("debugConfig")
+      buildConfigField(
+        "String",
+        "CORE_API_BASE_URL",
+        "\"http://10.0.2.2:3000/api/v1/\"",
+      )
+      buildConfigField(
+        "String",
+        "AI_API_BASE_URL",
+        "\"http://10.0.2.2:8000/api/v1/\"",
+      )
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
