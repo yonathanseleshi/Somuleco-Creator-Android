@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Ambient circular halo -->
+    <path
+        android:pathData="M54,54m-28,0a28,28 0,1 1,56 0a28,28 0,1 1,-56 0"
+        android:strokeWidth="1.5"
+        android:strokeColor="#50EC4899"
+        android:fillColor="#15FFFFFF" />
+
+    <!-- Outer crescent dynamic sweep -->
+    <path
+        android:pathData="M34,44 C38,32 50,26 66,28 C74,29 80,34 82,40 C78,36 70,33 62,33 C48,33 38,40 34,44 Z"
+        android:fillColor="#FFEC4899" />
+
+    <!-- Creator Stylized Fountain Pen / Spark Emblem (Center (54,54)) -->
+    <!-- Top Spark Star -->
+    <path
+        android:pathData="M54,26 L56.5,33.5 L64,36 L56.5,38.5 L54,46 L51.5,38.5 L44,36 L51.5,33.5 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <!-- Main Pen Nib Silhouette Body -->
+    <path
+        android:pathData="M44,48 L64,48 L61,64 L54,78 L47,64 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <!-- Inner Nib Slit and Breather Hole -->
+    <path
+        android:pathData="M54,55m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"
+        android:fillColor="#7C3AED" />
+    <path
+        android:pathData="M53.2,57 L54.8,57 L54.5,76 L53.5,76 Z"
+        android:fillColor="#7C3AED" />
+
+    <!-- Accent Wings -->
+    <path
+        android:pathData="M38,52 C35,62 38,72 45,78 L43,74 C38,69 36,61 38,52 Z"
+        android:fillColor="#06B6D4" />
+    <path
+        android:pathData="M70,52 C73,62 70,72 63,78 L65,74 C70,69 72,61 70,52 Z"
+        android:fillColor="#EC4899" />
+
+    <!-- Base anchor -->
+    <path
+        android:pathData="M48,80 L54,82 L60,80 L54,85 Z"
+        android:fillColor="#FFFFFFFF" />
+
+</vector>

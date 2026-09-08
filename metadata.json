@@ -1,0 +1,6 @@
+{
+  "name": "Somuleco Creator",
+  "description": "Creator-economy operating platform of the Somuleco ecosystem, empowering creators to publish content, build audience, monetize products and subscriptions, protect digital rights, and grow with AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
