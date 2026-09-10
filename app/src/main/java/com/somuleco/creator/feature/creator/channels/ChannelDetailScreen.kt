@@ -33,7 +33,8 @@ import com.somuleco.creator.ui.theme.*
 fun ChannelDetailScreen(
     channelId: String,
     onNavigate: (Screen) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onOpenContentDetail: (String) -> Unit = {}
 ) {
     val channels by CreatorRepository.channels.collectAsState()
     val channel = remember(channels, channelId) {
@@ -221,7 +222,7 @@ fun ChannelDetailScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onNavigate(Screen.ContentDetail) },
+                            .clickable { onOpenContentDetail(post.id) },
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
                         border = CardDefaults.outlinedCardBorder().copy(brush = Brush.linearGradient(listOf(BorderSubtle, BorderSubtle)))

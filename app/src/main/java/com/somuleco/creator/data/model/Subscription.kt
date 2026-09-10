@@ -1,9 +1,11 @@
 package com.somuleco.creator.data.model
 
+import com.somuleco.creator.core.model.Money
+
 data class MembershipTier(
     val id: String,
     val name: String,
-    val monthlyPrice: Double,
+    val price: Money,
     val description: String = "Exclusive subscriber benefits and creator access",
     val benefits: List<String> = emptyList(),
     val perks: List<String> = benefits,

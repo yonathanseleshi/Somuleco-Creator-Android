@@ -1,5 +1,7 @@
 package com.somuleco.creator.data.model
 
+import com.somuleco.creator.core.model.Money
+
 data class AnalyticsOverview(
     val viewsTotal: String = "184.2K",
     val followersTotal: String = "12,480",
@@ -16,15 +18,14 @@ data class TransactionItem(
     val date: String,
     val customerName: String,
     val itemTitle: String,
-    val grossAmount: Double,
-    val feeAmount: Double,
-    val netAmount: Double,
-    val currency: String = "USD",
+    val grossAmount: Money,
+    val feeAmount: Money,
+    val netAmount: Money,
     val status: String = "COMPLETED",
     val source: String = "Digital Product" // or "Subscription"
 ) {
     val type: String get() = source
-    val platformFee: Double get() = feeAmount
+    val platformFee: Money get() = feeAmount
 }
 
 data class TopContentPerformance(

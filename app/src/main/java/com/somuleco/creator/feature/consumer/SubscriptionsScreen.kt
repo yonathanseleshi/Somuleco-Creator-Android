@@ -152,7 +152,7 @@ fun SubscriptionsScreen(
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        "$${String.format("%.2f", sub.monthlyPrice)}/mo",
+                                        "$${String.format("%.2f", sub.monthlyPrice.amount / 100.0)}/mo",
                                         fontWeight = FontWeight.Bold,
                                         style = MaterialTheme.typography.titleSmall
                                     )

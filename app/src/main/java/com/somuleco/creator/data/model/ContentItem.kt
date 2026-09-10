@@ -1,14 +1,21 @@
 package com.somuleco.creator.data.model
 
+// Vocabulary aligned to the canonical ContentItem.contentType enum in
+// `GRD/Contracts/v0.1-domain-contracts.md` §3.6 (text_post/image_post/
+// video_post/audio_post/article/gallery/file_post/poll/announcement).
 enum class ContentType {
-    POST, ARTICLE, IMAGE, VIDEO, AUDIO, POLL, ANNOUNCEMENT
+    TEXT_POST, IMAGE_POST, VIDEO_POST, AUDIO_POST, ARTICLE, GALLERY, FILE_POST, POLL, ANNOUNCEMENT
 }
 
+// Vocabulary aligned to the canonical ContentItem.visibility enum in the
+// same contract (public/followers/free_subscribers/paid_subscribers/
+// membership_tier/purchase/private/unlisted). Only the values this app
+// currently uses are represented.
 enum class AccessType(val label: String) {
     PUBLIC("Public"),
     FOLLOWERS("Followers Only"),
-    SUBSCRIBERS("Subscribers Only"),
-    PREMIUM_TIER("Tier: Insider+"),
+    PAID_SUBSCRIBERS("Subscribers Only"),
+    MEMBERSHIP_TIER("Tier: Insider+"),
     PURCHASE("Requires Purchase")
 }
 

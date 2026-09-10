@@ -1,5 +1,6 @@
 package com.somuleco.creator
 
+import com.somuleco.creator.core.model.Money
 import com.somuleco.creator.data.model.*
 import com.somuleco.creator.data.repository.CreatorRepository
 import kotlinx.coroutines.runBlocking
@@ -102,13 +103,13 @@ class CreatorRepositoryTest {
             productId = targetProd.id,
             productTitle = targetProd.title,
             isPublished = true,
-            listingPrice = 49.00,
+            listingPrice = Money(4900, "USD"),
             discoverableInSomulecoGlobal = true
         )
         CreatorRepository.updateMarketplaceListing(newListing)
 
         val updated = CreatorRepository.products.value.find { it.id == targetProd.id }
-        assertEquals(49.00, updated?.priceAmount ?: 0.0, 0.01)
+        assertEquals(4900L, updated?.price?.amount ?: 0L)
         assertTrue(updated?.isMarketplaceListed == true)
     }
 
@@ -118,7 +119,7 @@ class CreatorRepositoryTest {
         val newTier = CreatorSubscriptionPlanItem(
             id = "tier_test_123",
             name = "VIP Masterclass Circle",
-            monthlyPrice = 49.0,
+            monthlyPrice = Money(4900, "USD"),
             benefits = listOf("Exclusive Livestreams", "1-on-1 Reviews")
         )
         CreatorRepository.createSubscriptionPlan(newTier)

@@ -9,8 +9,11 @@ data class UserReference(
     val isCreator: Boolean = true
 )
 
+// Vocabulary aligned to the canonical CreatorAccount.status enum in
+// `GRD/Contracts/v0.1-domain-contracts.md` §3.2 (draft/active/restricted/
+// suspended/closed).
 enum class CreatorAccountStatus {
-    DRAFT, ACTIVE, RESTRICTED, SUSPENDED
+    DRAFT, ACTIVE, RESTRICTED, SUSPENDED, CLOSED
 }
 
 data class CreatorAccount(

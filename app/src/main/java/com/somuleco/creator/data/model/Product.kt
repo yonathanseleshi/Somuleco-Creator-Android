@@ -1,5 +1,7 @@
 package com.somuleco.creator.data.model
 
+import com.somuleco.creator.core.model.Money
+
 enum class ProductType(val label: String) {
     DIGITAL_PRODUCT("Digital Guide & PDF"),
     CREATIVE_ASSETS("Preset & LUT Pack"),
@@ -30,8 +32,7 @@ data class CreatorProduct(
     val slug: String,
     val shortDescription: String,
     val fullDescription: String,
-    val priceAmount: Double,
-    val currency: String = "USD",
+    val price: Money,
     val productType: ProductType,
     val fileFormat: String = "PDF & DNG Bundle",
     val fileSizeMb: Double = 84.5,

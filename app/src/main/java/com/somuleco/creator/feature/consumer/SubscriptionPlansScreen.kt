@@ -84,7 +84,7 @@ fun SubscriptionPlansScreen(
                     ) {
                         Text(tier.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                         Text(
-                            text = if (tier.monthlyPrice == 0.0) "Free" else "$${tier.monthlyPrice.toInt()}/mo",
+                            text = if (tier.price.amount == 0L) "Free" else "$${tier.price.amount / 100}/mo",
                             fontWeight = FontWeight.ExtraBold,
                             color = SomulecoPurpleDark,
                             style = MaterialTheme.typography.titleLarge
@@ -116,7 +116,7 @@ fun SubscriptionPlansScreen(
                         )
                     ) {
                         Text(
-                            text = if (subscribedTierName == tier.name) "Subscribed (Active)" else if (tier.monthlyPrice == 0.0) "Join Free" else "Join for $${tier.monthlyPrice.toInt()}/mo",
+                            text = if (subscribedTierName == tier.name) "Subscribed (Active)" else if (tier.price.amount == 0L) "Join Free" else "Join for $${tier.price.amount / 100}/mo",
                             fontWeight = FontWeight.Bold
                         )
                     }

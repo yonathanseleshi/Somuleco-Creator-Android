@@ -294,7 +294,7 @@ fun CreatorDashboardScreen(
                             Text("${tx.customerName} • ${tx.date}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         }
                         Text(
-                            text = "+$${"%.2f".format(tx.netAmount)}",
+                            text = "+$${"%.2f".format(tx.netAmount.amount / 100.0)}",
                             fontWeight = FontWeight.ExtraBold,
                             color = SomulecoGreenText,
                             style = MaterialTheme.typography.titleSmall

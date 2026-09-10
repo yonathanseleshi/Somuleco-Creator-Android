@@ -141,7 +141,7 @@ fun PurchasesScreen(
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        "$${String.format("%.2f", prod.priceAmount)}",
+                                        "$${String.format("%.2f", prod.price.amount / 100.0)}",
                                         fontWeight = FontWeight.Bold,
                                         style = MaterialTheme.typography.titleSmall
                                     )

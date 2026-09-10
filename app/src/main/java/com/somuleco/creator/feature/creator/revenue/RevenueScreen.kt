@@ -142,7 +142,7 @@ fun RevenueScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(tx.itemTitle, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                            Text("+$${"%.2f".format(tx.netAmount)}", fontWeight = FontWeight.ExtraBold, color = SomulecoGreenText)
+                            Text("+$${"%.2f".format(tx.netAmount.amount / 100.0)}", fontWeight = FontWeight.ExtraBold, color = SomulecoGreenText)
                         }
 
                         Row(
@@ -150,7 +150,7 @@ fun RevenueScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("From ${tx.customerName} • ${tx.type}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                            Text("Gross: $${"%.2f".format(tx.grossAmount)} • Fee: -$${"%.2f".format(tx.platformFee)}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            Text("Gross: $${"%.2f".format(tx.grossAmount.amount / 100.0)} • Fee: -$${"%.2f".format(tx.platformFee.amount / 100.0)}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                         }
                     }
                 }
@@ -212,15 +212,15 @@ fun RevenueScreen(
                         HorizontalDivider(color = BorderSubtle)
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Gross Amount", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                            Text("$${"%.2f".format(tx.grossAmount)}", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                            Text("$${"%.2f".format(tx.grossAmount.amount / 100.0)}", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Somuleco Platform Fee (5%)", color = TextMuted, style = MaterialTheme.typography.bodySmall)
-                            Text("-$${"%.2f".format(tx.platformFee)}", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                            Text("-$${"%.2f".format(tx.platformFee.amount / 100.0)}", color = TextMuted, style = MaterialTheme.typography.bodySmall)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Net Creator Payout", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                            Text("+$${"%.2f".format(tx.netAmount)}", fontWeight = FontWeight.ExtraBold, color = SomulecoGreenText, style = MaterialTheme.typography.titleSmall)
+                            Text("+$${"%.2f".format(tx.netAmount.amount / 100.0)}", fontWeight = FontWeight.ExtraBold, color = SomulecoGreenText, style = MaterialTheme.typography.titleSmall)
                         }
                     }
                 }

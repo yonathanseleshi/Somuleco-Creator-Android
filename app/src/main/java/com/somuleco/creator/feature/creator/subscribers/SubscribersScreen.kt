@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.somuleco.creator.core.model.Money
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.CreatorSubscriptionPlanItem
 import com.somuleco.creator.data.model.MembershipTier
@@ -123,7 +124,7 @@ fun SubscribersScreen(
                         }
                         Surface(shape = RoundedCornerShape(8.dp), color = SomulecoPurpleLight) {
                             Text(
-                                text = if (tier.monthlyPrice == 0.0) "Free" else "$${tier.monthlyPrice.toInt()}/mo",
+                                text = if (tier.price.amount == 0L) "Free" else "$${tier.price.amount / 100}/mo",
                                 fontWeight = FontWeight.Bold,
                                 color = SomulecoPurpleDark,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -220,10 +221,11 @@ fun SubscribersScreen(
                 Button(
                     onClick = {
                         val price = newTierPrice.toDoubleOrNull() ?: 19.0
+                        val tierPrice = Money(Math.round(price * 100), "USD")
                         val tier = MembershipTier(
                             id = "tier_${System.currentTimeMillis()}",
                             name = newTierName.ifBlank { "Custom Creator Tier" },
-                            monthlyPrice = price,
+                            price = tierPrice,
                             benefits = newTierBenefits.split(",").map { it.trim() }.filter { it.isNotBlank() },
                             subscriberCount = 0
                         )
@@ -231,7 +233,7 @@ fun SubscribersScreen(
                             CreatorSubscriptionPlanItem(
                                 id = tier.id,
                                 name = tier.name,
-                                monthlyPrice = tier.monthlyPrice,
+                                monthlyPrice = tier.price,
                                 benefits = tier.benefits
                             )
                         )

@@ -1,5 +1,6 @@
 package com.somuleco.creator.feature.shell
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,6 +38,7 @@ fun CreatorShell(
     currentScreen: Screen,
     onNavigate: (Screen) -> Unit,
     onSignOut: () -> Unit,
+    useExpandedLayout: Boolean = false,
     content: @Composable (PaddingValues) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -56,18 +58,18 @@ fun CreatorShell(
 
     val selectedChannel = channels.find { it.id == selectedChannelId }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier
-                    .width(320.dp)
-                    .fillMaxHeight()
-                    .testTag("drawer_sheet"),
-                drawerContainerColor = SurfaceWhite,
-                drawerTonalElevation = 2.dp
-            ) {
-                DrawerHeader(
+    // Back closes an open drawer before letting Back pop the underlying nav back stack
+    // (v0.1-navigation-semantics.md §8).
+    BackHandler(enabled = drawerState.isOpen) {
+        scope.launch { drawerState.close() }
+    }
+
+    // Adaptive navigation (v0.1-navigation-semantics.md §8 / FND-Wave-04 §7.3.8): the same
+    // drawer content renders inside a dismissible ModalNavigationDrawer at compact/medium
+    // window widths, and inside an always-visible PermanentNavigationDrawer at expanded
+    // widths (tablets), so it never has to be maintained twice.
+    val drawerBody: @Composable ColumnScope.() -> Unit = {
+        DrawerHeader(
                     displayName = profile.displayName,
                     handle = profile.handle,
                     isCreatorMode = isCreatorMode,
@@ -352,9 +354,9 @@ fun CreatorShell(
 
                     Spacer(modifier = Modifier.height(24.dp))
                 }
-            }
-        }
-    ) {
+    }
+
+    val shellContent: @Composable () -> Unit = {
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -391,15 +393,17 @@ fun CreatorShell(
                         }
                     },
                     navigationIcon = {
-                        IconButton(
-                            onClick = { scope.launch { drawerState.open() } },
-                            modifier = Modifier.testTag("button_open_drawer")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Open Navigation Menu",
-                                tint = TextPrimary
-                            )
+                        if (!useExpandedLayout) {
+                            IconButton(
+                                onClick = { scope.launch { drawerState.open() } },
+                                modifier = Modifier.testTag("button_open_drawer")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Menu,
+                                    contentDescription = "Open Navigation Menu",
+                                    tint = TextPrimary
+                                )
+                            }
                         }
                     },
                     actions = {
@@ -440,6 +444,7 @@ fun CreatorShell(
                             modifier = Modifier
                                 .padding(end = 8.dp)
                                 .clickable { CreatorRepository.toggleCreatorMode() }
+                                .testTag("button_toggle_mode")
                         ) {
                             Text(
                                 text = if (isCreatorMode) "Creator" else "Consumer",
@@ -480,6 +485,41 @@ fun CreatorShell(
             }
         ) { paddingValues ->
             content(paddingValues)
+        }
+    }
+
+    if (useExpandedLayout) {
+        PermanentNavigationDrawer(
+            drawerContent = {
+                PermanentDrawerSheet(
+                    modifier = Modifier
+                        .width(320.dp)
+                        .fillMaxHeight()
+                        .testTag("drawer_sheet"),
+                    drawerContainerColor = SurfaceWhite,
+                    drawerTonalElevation = 2.dp,
+                    content = drawerBody
+                )
+            }
+        ) {
+            shellContent()
+        }
+    } else {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier
+                        .width(320.dp)
+                        .fillMaxHeight()
+                        .testTag("drawer_sheet"),
+                    drawerContainerColor = SurfaceWhite,
+                    drawerTonalElevation = 2.dp,
+                    content = drawerBody
+                )
+            }
+        ) {
+            shellContent()
         }
     }
 

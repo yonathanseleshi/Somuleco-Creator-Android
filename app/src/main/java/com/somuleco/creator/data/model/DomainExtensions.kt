@@ -1,5 +1,7 @@
 package com.somuleco.creator.data.model
 
+import com.somuleco.creator.core.model.Money
+
 /**
  * Authentication and session states for durable navigation resolution.
  */
@@ -38,8 +40,7 @@ data class MarketplaceListing(
     val productId: String,
     val productTitle: String,
     val isPublished: Boolean = true,
-    val listingPrice: Double,
-    val currency: String = "USD",
+    val listingPrice: Money,
     val commissionRate: Double = 0.05,
     val discoverableInSomulecoGlobal: Boolean = true,
     val syncStatus: String = "SYNCED",
@@ -54,7 +55,7 @@ data class MarketplaceListing(
 data class CreatorSubscriptionPlanItem(
     val id: String,
     val name: String,
-    val monthlyPrice: Double,
+    val monthlyPrice: Money,
     val isFree: Boolean = false,
     val billingPeriod: String = "MONTHLY",
     val channelId: String? = null,
@@ -75,7 +76,7 @@ data class UserSubscription(
     val creatorHandle: String,
     val avatarEmoji: String,
     val tierName: String,
-    val monthlyPrice: Double,
+    val monthlyPrice: Money,
     val nextBillingDate: String,
     val status: String = "ACTIVE",
     val benefitsSummary: String
@@ -89,7 +90,7 @@ data class PurchasedProduct(
     val productId: String,
     val title: String,
     val creatorName: String,
-    val pricePaid: Double,
+    val pricePaid: Money,
     val purchaseDate: String,
     val licenseId: String,
     val fileFormat: String,

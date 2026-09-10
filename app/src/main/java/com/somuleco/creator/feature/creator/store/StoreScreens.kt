@@ -157,7 +157,7 @@ fun ProductManagementCard(
                     }
                 }
                 Text(
-                    text = "$${product.priceAmount.toInt()}",
+                    text = "$${product.price.amount / 100}",
                     fontWeight = FontWeight.ExtraBold,
                     color = SomulecoBlueDark,
                     style = MaterialTheme.typography.titleMedium

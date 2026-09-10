@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.design.RightsTrustBadge
+import com.somuleco.creator.core.model.Money
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.MarketplaceListing
 import com.somuleco.creator.data.model.ProductRightsConfig
@@ -51,7 +52,7 @@ fun ProductDetailScreen(
     // Marketplace Form
     var isMarketplaceListed by remember(product) { mutableStateOf(product.isMarketplaceListed) }
     var channelStoreListed by remember { mutableStateOf(true) }
-    var marketplacePrice by remember(product) { mutableStateOf(product.priceAmount.toString()) }
+    var marketplacePrice by remember(product) { mutableStateOf((product.price.amount / 100.0).toString()) }
 
     var actionToast by remember { mutableStateOf<String?>(null) }
 
@@ -130,7 +131,7 @@ fun ProductDetailScreen(
                 Text("Created by ${product.creatorName} • ${product.channelName}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
             Text(
-                text = "$${product.priceAmount.toInt()}",
+                text = "$${product.price.amount / 100}",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.ExtraBold,
                 color = SomulecoBlueDark
@@ -228,7 +229,7 @@ fun ProductDetailScreen(
             shape = RoundedCornerShape(26.dp),
             colors = ButtonDefaults.buttonColors(containerColor = SomulecoBlue)
         ) {
-            Text("Buy Now - $${product.priceAmount.toInt()}.00 USD", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("Buy Now - $${product.price.amount / 100}.00 USD", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -403,20 +404,20 @@ fun ProductDetailScreen(
                 Card(colors = CardDefaults.cardColors(containerColor = SomulecoGreenSurface), shape = RoundedCornerShape(10.dp)) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Creator Earnings Breakdown", style = MaterialTheme.typography.labelSmall, color = SomulecoGreenText, fontWeight = FontWeight.Bold)
-                        val p = marketplacePrice.toDoubleOrNull() ?: product.priceAmount
+                        val p = marketplacePrice.toDoubleOrNull() ?: (product.price.amount / 100.0)
                         Text("List Price: $${String.format("%.2f", p)} | Somuleco Fee (5%): $${String.format("%.2f", p * 0.05)} | Net to You: $${String.format("%.2f", p * 0.95)}", style = MaterialTheme.typography.bodySmall, color = SomulecoGreenText)
                     }
                 }
 
                 Button(
                     onClick = {
-                        val p = marketplacePrice.toDoubleOrNull() ?: product.priceAmount
+                        val p = marketplacePrice.toDoubleOrNull() ?: (product.price.amount / 100.0)
                         CreatorRepository.updateMarketplaceListing(
                             MarketplaceListing(
                                 productId = product.id,
                                 productTitle = product.title,
                                 isPublished = isMarketplaceListed,
-                                listingPrice = p,
+                                listingPrice = Money(Math.round(p * 100), product.price.currency),
                                 discoverableInSomulecoGlobal = isMarketplaceListed
                             )
                         )

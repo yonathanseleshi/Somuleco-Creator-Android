@@ -1,5 +1,6 @@
 package com.somuleco.creator.data.repository
 
+import com.somuleco.creator.core.model.Money
 import com.somuleco.creator.data.model.*
 import com.somuleco.creator.data.repository.interfaces.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -176,14 +177,14 @@ object CreatorRepository :
                 creatorAccountId = "acc_elena_01",
                 channelId = "ch_1",
                 channelName = "Photography Masterclass",
-                contentType = ContentType.VIDEO,
+                contentType = ContentType.VIDEO_POST,
                 title = "Live Studio Lighting Breakdown: 1-Light Editorial Portraits",
                 summary = "Watch full 42-minute live studio walkthrough with lighting ratios and tethered capture previews.",
                 body = "Full subscriber masterclass on single-source Octabox placement for cinematic contrast. Includes BTS camera angles, fill card adjustments, and color gel experiments.",
                 mediaDuration = "42:15",
                 coverEmoji = "💡",
                 status = "PUBLISHED",
-                accessType = AccessType.SUBSCRIBERS,
+                accessType = AccessType.PAID_SUBSCRIBERS,
                 publishedDate = "Yesterday",
                 likesCount = 512,
                 commentsCount = 68,
@@ -195,7 +196,7 @@ object CreatorRepository :
                 creatorAccountId = "acc_elena_01",
                 channelId = "ch_2",
                 channelName = "Beginner Photography",
-                contentType = ContentType.POST,
+                contentType = ContentType.TEXT_POST,
                 title = "Stop Buying Lenses Until You Understand Focal Length Compression",
                 summary = "Quick visual guide: How 35mm vs 50mm vs 85mm alters face geometry and environment separation.",
                 body = "Focal length isn't just about 'getting closer'. It dictates visual perspective and spatial compression between your subject and background.\n\n• 35mm: Environmental context, intimate feeling.\n• 50mm: True to human eye perception.\n• 85mm: Flattering facial compression, creamy bokeh separation.",
@@ -213,13 +214,13 @@ object CreatorRepository :
                 creatorAccountId = "acc_elena_01",
                 channelId = "ch_3",
                 channelName = "Behind the Scenes & Studio",
-                contentType = ContentType.IMAGE,
+                contentType = ContentType.IMAGE_POST,
                 title = "Raw Studio Diaries: Preparing the European Gallery Exhibition",
                 summary = "Print proofs, frame selections, and exhibition curation notes for the upcoming gallery.",
                 body = "A preview of the large-format matte cotton rag test prints for the Zurich gallery show. We are testing three weight stocks to check ink depth.",
                 coverEmoji = "🖼️",
                 status = "PUBLISHED",
-                accessType = AccessType.PREMIUM_TIER,
+                accessType = AccessType.MEMBERSHIP_TIER,
                 publishedDate = "5 days ago",
                 likesCount = 230,
                 commentsCount = 19,
@@ -251,7 +252,7 @@ object CreatorRepository :
                 slug = "wedding-portrait-business-guide",
                 shortDescription = "Comprehensive 140-page roadmap for client booking, contract systems, and pricing strategy.",
                 fullDescription = "The battle-tested playbook used to scale portrait bookings to six figures. Includes client questionnaire templates, email sequences, pricing calculator spreadsheet, and legal contract guidance verified by Digital Product Rights.",
-                priceAmount = 49.0,
+                price = Money(4900, "USD"),
                 productType = ProductType.DIGITAL_PRODUCT,
                 fileFormat = "PDF & Notion Template",
                 fileSizeMb = 34.2,
@@ -280,7 +281,7 @@ object CreatorRepository :
                 slug = "cinematic-daylight-presets",
                 shortDescription = "18 refined color profiles crafted for natural skin tones and organic golden warmth.",
                 fullDescription = "Hand-tailored color gradings crafted across 200+ commercial shoots. Includes presets for Lightroom Classic, CC Mobile, and Capture One Styles with custom curve adjustment guides.",
-                priceAmount = 29.0,
+                price = Money(2900, "USD"),
                 productType = ProductType.CREATIVE_ASSETS,
                 fileFormat = "XMP, DNG & COSTYLE",
                 fileSizeMb = 14.8,
@@ -309,7 +310,7 @@ object CreatorRepository :
                 slug = "camera-settings-pocket-cards",
                 shortDescription = "Printable & phone-ready field reference cards for exposure triangle and lighting setups.",
                 fullDescription = "Pocket-friendly visual charts covering Aperture, Shutter Speed, ISO, and metering modes for sports, low-light, portraits, and landscapes.",
-                priceAmount = 14.0,
+                price = Money(1400, "USD"),
                 productType = ProductType.DIGITAL_PRODUCT,
                 fileFormat = "PDF & Mobile Wallpapers",
                 fileSizeMb = 8.5,
@@ -415,9 +416,9 @@ object CreatorRepository :
     // -------------------------------------------------------------------------
     private val _marketplaceMap = MutableStateFlow<Map<String, MarketplaceListing>>(
         mapOf(
-            "prod_1" to MarketplaceListing("prod_1", "Complete Wedding & Portrait Business Guide", true, 49.0),
-            "prod_2" to MarketplaceListing("prod_2", "Cinematic Daylight Lightroom & Capture One Presets", true, 29.0),
-            "prod_3" to MarketplaceListing("prod_3", "Camera Settings Cheat Sheets & Pocket Cards", false, 14.0)
+            "prod_1" to MarketplaceListing("prod_1", "Complete Wedding & Portrait Business Guide", true, Money(4900, "USD")),
+            "prod_2" to MarketplaceListing("prod_2", "Cinematic Daylight Lightroom & Capture One Presets", true, Money(2900, "USD")),
+            "prod_3" to MarketplaceListing("prod_3", "Camera Settings Cheat Sheets & Pocket Cards", false, Money(1400, "USD"))
         )
     )
 
@@ -427,7 +428,7 @@ object CreatorRepository :
             MarketplaceListing(
                 productId = productId,
                 productTitle = prod?.title ?: "Digital Product",
-                listingPrice = prod?.priceAmount ?: 29.0
+                listingPrice = prod?.price ?: Money(2900, "USD")
             )
         }
     }
@@ -460,7 +461,7 @@ object CreatorRepository :
                 MembershipTier(
                     id = "tier_free",
                     name = "Free Community Follower",
-                    monthlyPrice = 0.0,
+                    price = Money(0, "USD"),
                     benefits = listOf("Weekly educational newsletter", "Public feed posts & tips", "Community discussions"),
                     subscriberCount = 11560,
                     badgeColorHex = 0xFF64748B
@@ -468,7 +469,7 @@ object CreatorRepository :
                 MembershipTier(
                     id = "tier_insider",
                     name = "Creator Insider",
-                    monthlyPrice = 9.0,
+                    price = Money(900, "USD"),
                     benefits = listOf("Subscriber-only video masterclasses", "Downloadable RAW files for practice", "Monthly live Q&A session", "20% discount on all digital store products"),
                     subscriberCount = 710,
                     isFeatured = true,
@@ -477,7 +478,7 @@ object CreatorRepository :
                 MembershipTier(
                     id = "tier_pro",
                     name = "Studio Pro Mentorship",
-                    monthlyPrice = 39.0,
+                    price = Money(3900, "USD"),
                     benefits = listOf("All Insider tier benefits", "Quarterly 1-on-1 portfolio video critique", "Direct Creator messaging access", "Free access to all new preset releases"),
                     subscriberCount = 210,
                     badgeColorHex = 0xFF2563EB
@@ -494,7 +495,7 @@ object CreatorRepository :
             CreatorSubscriptionPlanItem(
                 id = "plan_tier_free",
                 name = "Free Community Access",
-                monthlyPrice = 0.0,
+                monthlyPrice = Money(0, "USD"),
                 isFree = true,
                 benefits = listOf("Public channel posts", "Community questions", "Weekly highlights"),
                 subscriberCount = 11560,
@@ -503,7 +504,7 @@ object CreatorRepository :
             CreatorSubscriptionPlanItem(
                 id = "plan_tier_insider",
                 name = "Creator Insider Tier",
-                monthlyPrice = 9.0,
+                monthlyPrice = Money(900, "USD"),
                 benefits = listOf("Full masterclasses", "Downloadable practice files", "Monthly AMA live", "20% Store discount"),
                 subscriberCount = 710,
                 isActive = true,
@@ -512,7 +513,7 @@ object CreatorRepository :
             CreatorSubscriptionPlanItem(
                 id = "plan_tier_pro",
                 name = "Studio Pro Mentorship",
-                monthlyPrice = 39.0,
+                monthlyPrice = Money(3900, "USD"),
                 benefits = listOf("All Insider benefits", "Quarterly portfolio video review", "Direct message priority", "Free new releases"),
                 subscriberCount = 210,
                 isActive = true,
@@ -531,7 +532,7 @@ object CreatorRepository :
                 creatorHandle = "@elenarostova",
                 avatarEmoji = "📸",
                 tierName = "Creator Insider",
-                monthlyPrice = 9.0,
+                monthlyPrice = Money(900, "USD"),
                 nextBillingDate = "Oct 01, 2026",
                 status = "ACTIVE",
                 benefitsSummary = "Masterclass tutorials, RAW practice downloads & community perks"
@@ -543,7 +544,7 @@ object CreatorRepository :
                 creatorHandle = "@marcusvance",
                 avatarEmoji = "🎧",
                 tierName = "Sound Designer Pro",
-                monthlyPrice = 14.0,
+                monthlyPrice = Money(1400, "USD"),
                 nextBillingDate = "Oct 12, 2026",
                 status = "ACTIVE",
                 benefitsSummary = "Monthly audio stems, Ableton templates & sound design presets"
@@ -557,7 +558,7 @@ object CreatorRepository :
         val newTier = MembershipTier(
             id = plan.id,
             name = plan.name,
-            monthlyPrice = plan.monthlyPrice,
+            price = plan.monthlyPrice,
             description = plan.benefits.joinToString(", ").ifBlank { "Member exclusive benefits" },
             perks = plan.benefits
         )
@@ -599,11 +600,11 @@ object CreatorRepository :
 
     private val _transactions = MutableStateFlow(
         listOf(
-            TransactionItem("tx_1", "Today, 14:20", "Liam O'Connor", "Wedding & Portrait Business Guide", 49.0, 2.45, 46.55, status = "COMPLETED", source = "Digital Product"),
-            TransactionItem("tx_2", "Today, 11:05", "Sophia Rossi", "Studio Pro Mentorship (Renewal)", 39.0, 1.95, 37.05, status = "COMPLETED", source = "Subscription"),
-            TransactionItem("tx_3", "Yesterday", "Hanna Schmidt", "Cinematic Daylight Lightroom Presets", 29.0, 1.45, 27.55, status = "COMPLETED", source = "Digital Product"),
-            TransactionItem("tx_4", "Sep 05", "Kenji Sato", "Camera Settings Pocket Cards", 14.0, 0.70, 13.30, status = "COMPLETED", source = "Digital Product"),
-            TransactionItem("tx_5", "Sep 04", "Marcus Vance", "Creator Insider (Renewal)", 9.0, 0.45, 8.55, status = "COMPLETED", source = "Subscription")
+            TransactionItem("tx_1", "Today, 14:20", "Liam O'Connor", "Wedding & Portrait Business Guide", Money(4900, "USD"), Money(245, "USD"), Money(4655, "USD"), status = "COMPLETED", source = "Digital Product"),
+            TransactionItem("tx_2", "Today, 11:05", "Sophia Rossi", "Studio Pro Mentorship (Renewal)", Money(3900, "USD"), Money(195, "USD"), Money(3705, "USD"), status = "COMPLETED", source = "Subscription"),
+            TransactionItem("tx_3", "Yesterday", "Hanna Schmidt", "Cinematic Daylight Lightroom Presets", Money(2900, "USD"), Money(145, "USD"), Money(2755, "USD"), status = "COMPLETED", source = "Digital Product"),
+            TransactionItem("tx_4", "Sep 05", "Kenji Sato", "Camera Settings Pocket Cards", Money(1400, "USD"), Money(70, "USD"), Money(1330, "USD"), status = "COMPLETED", source = "Digital Product"),
+            TransactionItem("tx_5", "Sep 04", "Marcus Vance", "Creator Insider (Renewal)", Money(900, "USD"), Money(45, "USD"), Money(855, "USD"), status = "COMPLETED", source = "Subscription")
         )
     )
     override val transactions: StateFlow<List<RevenueTransaction>> = _transactions.asStateFlow()
@@ -1124,7 +1125,7 @@ object CreatorRepository :
             slug = title.lowercase().replace(" ", "-"),
             shortDescription = shortDescription,
             fullDescription = fullDescription,
-            priceAmount = price,
+            price = Money(Math.round(price * 100), "USD"),
             productType = productType,
             fileFormat = fileFormat,
             rightsRecord = newRights,
@@ -1162,20 +1163,22 @@ object CreatorRepository :
                 prod.copy(
                     isPurchased = true,
                     salesCount = prod.salesCount + 1,
-                    revenueTotal = prod.revenueTotal + prod.priceAmount
+                    revenueTotal = prod.revenueTotal + prod.price.amount / 100.0
                 )
             } else prod
         }
         val product = _products.value.find { it.id == productId }
         if (product != null) {
+            val grossCents = product.price.amount
+            val feeCents = Math.round(grossCents * 0.05)
             val newTx = TransactionItem(
                 id = "tx_${System.currentTimeMillis()}",
                 date = "Just now",
                 customerName = _currentUser.value.displayName,
                 itemTitle = product.title,
-                grossAmount = product.priceAmount,
-                feeAmount = product.priceAmount * 0.05,
-                netAmount = product.priceAmount * 0.95,
+                grossAmount = Money(grossCents, product.price.currency),
+                feeAmount = Money(feeCents, product.price.currency),
+                netAmount = Money(grossCents - feeCents, product.price.currency),
                 status = "COMPLETED",
                 source = "Digital Product"
             )
@@ -1200,15 +1203,17 @@ object CreatorRepository :
             isSubscribed = true,
             activeTierId = tierId
         )
-        if (tier != null && tier.monthlyPrice > 0) {
+        if (tier != null && tier.price.amount > 0) {
+            val grossCents = tier.price.amount
+            val feeCents = Math.round(grossCents * 0.05)
             val newTx = TransactionItem(
                 id = "tx_${System.currentTimeMillis()}",
                 date = "Just now",
                 customerName = _currentUser.value.displayName,
                 itemTitle = "Subscription to ${tier.name}",
-                grossAmount = tier.monthlyPrice,
-                feeAmount = tier.monthlyPrice * 0.05,
-                netAmount = tier.monthlyPrice * 0.95,
+                grossAmount = Money(grossCents, tier.price.currency),
+                feeAmount = Money(feeCents, tier.price.currency),
+                netAmount = Money(grossCents - feeCents, tier.price.currency),
                 status = "COMPLETED",
                 source = "Subscription"
             )

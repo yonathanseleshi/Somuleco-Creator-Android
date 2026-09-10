@@ -110,8 +110,8 @@ fun AccessBadge(accessType: AccessType, modifier: Modifier = Modifier) {
     val (bgColor, textColor, icon) = when (accessType) {
         AccessType.PUBLIC -> Triple(Color(0xFFF1F5F9), Color(0xFF475569), Icons.Outlined.Public)
         AccessType.FOLLOWERS -> Triple(SomulecoBlueLight, SomulecoBlueDark, Icons.Outlined.Group)
-        AccessType.SUBSCRIBERS -> Triple(SomulecoPurpleLight, SomulecoPurpleDark, Icons.Outlined.Star)
-        AccessType.PREMIUM_TIER -> Triple(SomulecoPinkLight, SomulecoPinkDark, Icons.Outlined.Diamond)
+        AccessType.PAID_SUBSCRIBERS -> Triple(SomulecoPurpleLight, SomulecoPurpleDark, Icons.Outlined.Star)
+        AccessType.MEMBERSHIP_TIER -> Triple(SomulecoPinkLight, SomulecoPinkDark, Icons.Outlined.Diamond)
         AccessType.PURCHASE -> Triple(SomulecoGreenSurface, SomulecoGreenText, Icons.Outlined.ShoppingBag)
     }
 

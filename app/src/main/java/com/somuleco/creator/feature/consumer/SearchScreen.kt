@@ -181,7 +181,7 @@ fun SearchScreen(
                                     Text("DPR Protected • ${prod.fileFormat}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                                 }
                             }
-                            Text("$${prod.priceAmount.toInt()}", fontWeight = FontWeight.Bold, color = SomulecoBlueDark)
+                            Text("$${prod.price.amount / 100}", fontWeight = FontWeight.Bold, color = SomulecoBlueDark)
                         }
                     }
                 }

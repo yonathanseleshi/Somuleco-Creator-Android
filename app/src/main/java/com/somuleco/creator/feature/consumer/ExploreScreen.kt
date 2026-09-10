@@ -120,7 +120,7 @@ fun ExploreScreen(
                             Text(prod.shortDescription, style = MaterialTheme.typography.bodySmall, color = TextSecondary, maxLines = 1)
                             Text("Protected by DPR", style = MaterialTheme.typography.labelSmall, color = SomulecoBlue, fontWeight = FontWeight.Bold)
                         }
-                        Text("$${prod.priceAmount.toInt()}", fontWeight = FontWeight.ExtraBold, color = SomulecoBlueDark)
+                        Text("$${prod.price.amount / 100}", fontWeight = FontWeight.ExtraBold, color = SomulecoBlueDark)
                     }
                 }
             }
