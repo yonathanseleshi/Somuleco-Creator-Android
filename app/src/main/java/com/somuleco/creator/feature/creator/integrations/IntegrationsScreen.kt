@@ -18,14 +18,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun IntegrationsScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: IntegrationsViewModel = hiltViewModel()
 ) {
-    val integrations by CreatorRepository.integrations.collectAsState()
+    val integrations by viewModel.integrations.collectAsState()
 
     Column(
         modifier = Modifier
@@ -74,7 +75,7 @@ fun IntegrationsScreen(
 
                         Switch(
                             checked = item.isConnected,
-                            onCheckedChange = { CreatorRepository.toggleIntegration(item.id) }
+                            onCheckedChange = { viewModel.toggleIntegration(item.id) }
                         )
                     }
                 }

@@ -1,20 +1,22 @@
 package com.somuleco.creator
 
-import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.somuleco.creator.data.model.UserReference
-import com.somuleco.creator.data.repository.CreatorRepository
-import com.somuleco.creator.ui.theme.SomulecoTheme
+import com.somuleco.creator.data.model.UserIdentity
+import com.somuleco.creator.data.repository.interfaces.AuthRepository
+import com.somuleco.creator.data.repository.interfaces.ChannelRepository
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import javax.inject.Inject
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
@@ -24,35 +26,50 @@ import org.robolectric.annotation.Config
  * Drives the shell via the test tags already present in CreatorShell.kt
  * (`drawer_sheet`, `button_open_drawer`, `drawer_item_<label>`, `fab_create`) and the
  * per-screen `screen_*` test tags already present on each destination composable.
+ *
+ * Updated for Foundation Wave 05: `MainActivity`/`CreatorShell`/migrated screens now
+ * resolve their data through Hilt-supplied ViewModels and repository interfaces rather
+ * than the deleted `CreatorRepository` singleton, so this test runs as a
+ * `@HiltAndroidTest` against the real `MainActivity` (itself `@AndroidEntryPoint`)
+ * instead of a bare `ComponentActivity`.
  */
+@HiltAndroidTest
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [36], application = dagger.hilt.android.testing.HiltTestApplication::class)
 class NavigationFlowTest {
 
-    @get:Rule
-    val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule(order = 0)
+    val hiltRule = HiltAndroidRule(this)
 
-    private lateinit var restoreUser: UserReference
+    @get:Rule(order = 1)
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
+
+    @Inject
+    lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var channelRepository: ChannelRepository
+
+    private lateinit var restoreUser: UserIdentity
 
     @Before
     fun setUp() {
-        // CreatorRepository is a process-wide singleton; snapshot + restore around each test so
+        hiltRule.inject()
+        // Repositories are Hilt @Singleton instances; snapshot + restore around each test so
         // mutations (logout, mode toggles) in one test never leak into the next.
-        restoreUser = CreatorRepository.currentUser.value
-        runBlocking { CreatorRepository.login(restoreUser.email, "password") }
-        CreatorRepository.setCreatorMode(true)
+        restoreUser = authRepository.currentUser.value
+        runBlocking { authRepository.login(restoreUser.email, "password") }
+        authRepository.setCreatorMode(true)
     }
 
     @After
     fun tearDown() {
-        runBlocking { CreatorRepository.login(restoreUser.email, "password") }
-        CreatorRepository.setCreatorMode(true)
+        runBlocking { authRepository.login(restoreUser.email, "password") }
+        authRepository.setCreatorMode(true)
     }
 
     @Test
     fun drawerNavigation_switchesTopLevelDestination() {
-        composeTestRule.setContent { SomulecoTheme { SomulecoApp() } }
-
         // Boots into Creator Dashboard per the mock authenticated+Creator-activated default
         // (v0.1-navigation-semantics.md §3.2).
         composeTestRule.onNodeWithTag("screen_creator_dashboard").assertExists()
@@ -71,8 +88,6 @@ class NavigationFlowTest {
 
     @Test
     fun backHandler_closesOpenDrawer_beforePoppingBackStack() {
-        composeTestRule.setContent { SomulecoTheme { SomulecoApp() } }
-
         composeTestRule.onNodeWithTag("button_open_drawer").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("drawer_sheet").assertExists()
@@ -88,15 +103,13 @@ class NavigationFlowTest {
 
     @Test
     fun backFromChannelDetail_popsToChannelsList_notHardcodedJump() {
-        composeTestRule.setContent { SomulecoTheme { SomulecoApp() } }
-
         composeTestRule.onNodeWithTag("button_open_drawer").performClick()
         composeTestRule.onNodeWithTag("drawer_item_channels").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("screen_channels").assertExists()
 
         // Open the first channel's detail screen from the Channels list.
-        val firstChannel = CreatorRepository.channels.value.first()
+        val firstChannel = channelRepository.channels.value.first()
         composeTestRule.onNodeWithText(firstChannel.name).performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("screen_channel_detail").assertExists()
@@ -111,9 +124,8 @@ class NavigationFlowTest {
 
     @Test
     fun unauthenticatedUser_cannotReachCreatorDestination() {
-        runBlocking { CreatorRepository.logout() }
-
-        composeTestRule.setContent { SomulecoTheme { SomulecoApp() } }
+        runBlocking { authRepository.logout() }
+        composeTestRule.waitForIdle()
 
         // The route boundary lands an unauthenticated session in the auth graph (its start
         // destination, Landing) — never silently on a Creator destination
@@ -124,7 +136,6 @@ class NavigationFlowTest {
 
     @Test
     fun togglingToConsumerMode_landsOnHome_andHidesCreatorWorkspaceSection() {
-        composeTestRule.setContent { SomulecoTheme { SomulecoApp() } }
         composeTestRule.onNodeWithTag("screen_creator_dashboard").assertExists()
 
         // Switching to consumer mode lands on Home (v0.1-navigation-semantics.md §3.3), and the

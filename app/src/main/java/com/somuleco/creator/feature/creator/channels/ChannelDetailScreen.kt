@@ -22,10 +22,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.core.design.MetricCard
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.AccessType
-import com.somuleco.creator.data.repository.CreatorRepository
 import com.somuleco.creator.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,24 +35,42 @@ fun ChannelDetailScreen(
     channelId: String,
     onNavigate: (Screen) -> Unit,
     onBackClick: () -> Unit,
-    onOpenContentDetail: (String) -> Unit = {}
+    onOpenContentDetail: (String) -> Unit = {},
+    viewModel: ChannelDetailViewModel = hiltViewModel()
 ) {
-    val channels by CreatorRepository.channels.collectAsState()
-    val channel = remember(channels, channelId) {
-        channels.find { it.id == channelId } ?: channels.firstOrNull()
-    }
-    val contentItems by CreatorRepository.contentItems.collectAsState()
-    val channelPosts = remember(contentItems, channel) {
-        contentItems.filter { it.channelId == channel?.id }
-    }
+    LaunchedEffect(channelId) { viewModel.load(channelId) }
+    val state by viewModel.state.collectAsState()
 
-    if (channel == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Channel not found")
+    Box(modifier = Modifier.fillMaxSize().testTag("screen_channel_detail")) {
+        UiStateContent(
+            state = state,
+            emptyTitle = "Channel not found",
+            emptyDescription = "This channel may have been removed."
+        ) { detail ->
+            ChannelDetailContent(
+                channel = detail.channel,
+                channelPosts = detail.posts,
+                onNavigate = onNavigate,
+                onBackClick = onBackClick,
+                onOpenContentDetail = onOpenContentDetail,
+                onNewPostInChannel = { viewModel.selectAsActiveChannel(detail.channel.id) },
+                onToggleFollow = { viewModel.toggleFollow(detail.channel.id) }
+            )
         }
-        return
     }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChannelDetailContent(
+    channel: com.somuleco.creator.data.model.ChannelSummary,
+    channelPosts: List<com.somuleco.creator.data.model.ContentPost>,
+    onNavigate: (Screen) -> Unit,
+    onBackClick: () -> Unit,
+    onOpenContentDetail: (String) -> Unit,
+    onNewPostInChannel: () -> Unit,
+    onToggleFollow: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -75,11 +94,10 @@ fun ChannelDetailScreen(
                 .fillMaxSize()
                 .background(BackgroundLight)
                 .padding(padding)
-                .padding(16.dp)
-                .testTag("screen_channel_detail"),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Channel Banner
+            // ChannelSummary Banner
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -133,7 +151,7 @@ fun ChannelDetailScreen(
                         ) {
                             Button(
                                 onClick = {
-                                    CreatorRepository.selectChannel(channel.id)
+                                    onNewPostInChannel()
                                     onNavigate(Screen.ContentEditor)
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = SomulecoBlue),
@@ -142,7 +160,7 @@ fun ChannelDetailScreen(
                                 Text("New Post in Channel")
                             }
                             OutlinedButton(
-                                onClick = { CreatorRepository.toggleFollowChannel(channel.id) },
+                                onClick = { onToggleFollow() },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(if (channel.isFollowed) "Following" else "Follow")
@@ -185,7 +203,7 @@ fun ChannelDetailScreen(
                 }
             }
 
-            // Channel Content List
+            // ChannelSummary Content List
             item {
                 Text(
                     text = "Channel Content (${channelPosts.size})",

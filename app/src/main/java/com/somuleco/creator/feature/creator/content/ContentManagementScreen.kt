@@ -21,18 +21,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.core.design.AccessBadge
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.model.ContentItem
-import com.somuleco.creator.data.repository.CreatorRepository
+import com.somuleco.creator.data.model.ContentPost
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun ContentManagementScreen(
     onNavigate: (Screen) -> Unit,
-    onOpenContentDetail: (String) -> Unit
+    onOpenContentDetail: (String) -> Unit,
+    viewModel: ContentViewModel = hiltViewModel()
 ) {
-    val contentList by CreatorRepository.contentItems.collectAsState()
+    val state by viewModel.state.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Published", "Drafts (1)", "Scheduled (0)")
 
@@ -80,16 +82,24 @@ fun ContentManagementScreen(
             }
         }
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(contentList) { item ->
-                ContentItemRow(
-                    item = item,
-                    onClick = { onOpenContentDetail(item.id) },
-                    onLikeClick = { CreatorRepository.toggleLike(item.id) }
-                )
+        UiStateContent(
+            state = state,
+            emptyTitle = "No content yet",
+            emptyDescription = "Publish your first post to see it here.",
+            emptyActionLabel = "Create Post",
+            onEmptyAction = { onNavigate(Screen.ContentEditor) }
+        ) { contentList ->
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(contentList) { item ->
+                    ContentItemRow(
+                        item = item,
+                        onClick = { onOpenContentDetail(item.id) },
+                        onLikeClick = { viewModel.toggleLike(item.id) }
+                    )
+                }
             }
         }
     }
@@ -97,7 +107,7 @@ fun ContentManagementScreen(
 
 @Composable
 fun ContentItemRow(
-    item: ContentItem,
+    item: ContentPost,
     onClick: () -> Unit,
     onLikeClick: () -> Unit
 ) {

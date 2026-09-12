@@ -18,17 +18,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.core.design.MetricCard
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun AnalyticsScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: AnalyticsViewModel = hiltViewModel()
 ) {
-    val analytics by CreatorRepository.analytics.collectAsState()
-    val topContent by CreatorRepository.topContent.collectAsState()
+    val state by viewModel.state.collectAsState()
     var selectedTimeframe by remember { mutableStateOf("30D") }
 
     Column(
@@ -40,6 +41,12 @@ fun AnalyticsScreen(
             .testTag("screen_analytics"),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        UiStateContent(state = state) { analyticsData ->
+        val analytics = analyticsData.analytics
+        val topContent = analyticsData.topContent
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -136,6 +143,8 @@ fun AnalyticsScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+        }
+        }
     }
 }
 

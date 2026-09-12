@@ -1,6 +1,6 @@
 package com.somuleco.creator.data.model
 
-data class CreatorRecommendation(
+data class CreatorRecommendationCard(
     val id: String,
     val title: String,
     val reason: String,
@@ -14,7 +14,7 @@ enum class AIMessageRole {
     USER, ASSISTANT, SYSTEM
 }
 
-data class AIMessage(
+data class AiChatMessage(
     val id: String,
     val role: AIMessageRole,
     val content: String,
@@ -27,7 +27,7 @@ data class AIMessage(
     val text: String get() = content
 }
 
-data class AIArtifact(
+data class AiArtifactDraft(
     val id: String,
     val title: String,
     val artifactType: String, // "POST_DRAFT", "PRODUCT_CONCEPT", "CONTENT_CALENDAR"

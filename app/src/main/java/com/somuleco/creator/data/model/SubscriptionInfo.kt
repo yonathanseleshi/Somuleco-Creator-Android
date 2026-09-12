@@ -2,7 +2,7 @@ package com.somuleco.creator.data.model
 
 import com.somuleco.creator.core.model.Money
 
-data class MembershipTier(
+data class MembershipTierInfo(
     val id: String,
     val name: String,
     val price: Money,
@@ -14,13 +14,13 @@ data class MembershipTier(
     val badgeColorHex: Long = 0xFF7C3AED
 )
 
-data class SubscriptionPlan(
+data class SubscriptionPlanInfo(
     val id: String,
     val creatorAccountId: String,
     val channelId: String,
     val name: String,
     val description: String,
-    val tiers: List<MembershipTier>,
+    val tiers: List<MembershipTierInfo>,
     val isSubscribed: Boolean = false,
     val activeTierId: String? = null
 )

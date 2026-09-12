@@ -22,14 +22,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun NotificationsScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: NotificationsViewModel = hiltViewModel()
 ) {
-    val notifications by CreatorRepository.notifications.collectAsState()
+    val notifications by viewModel.notifications.collectAsState()
 
     Column(
         modifier = Modifier
@@ -49,7 +50,7 @@ fun NotificationsScreen(
                 Text("Channel updates, subscriber activity, and product sales", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
 
-            IconButton(onClick = { CreatorRepository.markAllNotificationsRead() }) {
+            IconButton(onClick = { viewModel.markAllAsRead() }) {
                 Icon(Icons.Default.DoneAll, contentDescription = "Mark all read", tint = SomulecoBlue)
             }
         }
@@ -62,7 +63,7 @@ fun NotificationsScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { CreatorRepository.markNotificationRead(notif.id) },
+                        .clickable { viewModel.markAsRead(notif.id) },
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (notif.isRead) SurfaceWhite else SomulecoBlueLight

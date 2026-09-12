@@ -19,15 +19,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun SavedScreen(
     onNavigate: (Screen) -> Unit,
-    onOpenContentDetail: (String) -> Unit
+    onOpenContentDetail: (String) -> Unit,
+    viewModel: SavedViewModel = hiltViewModel()
 ) {
-    val contentItems by CreatorRepository.contentItems.collectAsState()
+    val contentItems by viewModel.contentItems.collectAsState()
     val savedItems = remember(contentItems) { contentItems.filter { it.isSaved } }
 
     Column(
@@ -120,7 +121,7 @@ fun SavedScreen(
                                 Text("Published ${item.publishedDate} • ${item.likesCount} likes", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                             }
                             IconButton(
-                                onClick = { CreatorRepository.toggleSave(item.id) }
+                                onClick = { viewModel.toggleBookmark(item.id) }
                             ) {
                                 Icon(
                                     imageVector = if (item.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,

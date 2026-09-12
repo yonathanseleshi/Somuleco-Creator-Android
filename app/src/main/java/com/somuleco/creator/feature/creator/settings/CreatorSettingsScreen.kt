@@ -18,15 +18,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.CreatorSettingsData
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun CreatorSettingsScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: CreatorSettingsViewModel = hiltViewModel()
 ) {
-    val profile by CreatorRepository.creatorProfile.collectAsState()
-    val currentSettings by CreatorRepository.settings.collectAsState()
+    val profile by viewModel.profile.collectAsState()
+    val currentSettings by viewModel.settings.collectAsState()
 
     var autoDprProtect by remember(currentSettings) { mutableStateOf(currentSettings.autoDprProtect) }
     var emailNotifications by remember(currentSettings) { mutableStateOf(currentSettings.weeklyDigestEmail) }
@@ -123,7 +124,7 @@ fun CreatorSettingsScreen(
 
         Button(
             onClick = {
-                CreatorRepository.updateSettings(
+                viewModel.updateSettings(
                     currentSettings.copy(
                         autoDprProtect = autoDprProtect,
                         weeklyDigestEmail = emailNotifications,

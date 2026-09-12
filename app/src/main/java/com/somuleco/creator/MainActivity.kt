@@ -6,9 +6,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import com.somuleco.creator.core.session.AppSessionState
 import com.somuleco.creator.ui.theme.SomulecoTheme
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+  @Inject lateinit var appSessionState: AppSessionState
+
   @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -16,7 +23,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       val windowSizeClass = calculateWindowSizeClass(this)
       SomulecoTheme {
-        SomulecoApp(windowSizeClass = windowSizeClass)
+        SomulecoApp(windowSizeClass = windowSizeClass, appSessionState = appSessionState)
       }
     }
   }

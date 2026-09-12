@@ -1,6 +1,6 @@
 package com.somuleco.creator.data.model
 
-data class UserReference(
+data class UserIdentity(
     val id: String,
     val displayName: String,
     val avatarUrl: String = "",
@@ -9,14 +9,14 @@ data class UserReference(
     val isCreator: Boolean = true
 )
 
-// Vocabulary aligned to the canonical CreatorAccount.status enum in
+// Vocabulary aligned to the canonical CreatorAccountInfo.status enum in
 // `GRD/Contracts/v0.1-domain-contracts.md` §3.2 (draft/active/restricted/
 // suspended/closed).
 enum class CreatorAccountStatus {
     DRAFT, ACTIVE, RESTRICTED, SUSPENDED, CLOSED
 }
 
-data class CreatorAccount(
+data class CreatorAccountInfo(
     val id: String,
     val userId: String,
     val status: CreatorAccountStatus = CreatorAccountStatus.ACTIVE,
@@ -30,7 +30,7 @@ data class CreatorAccount(
     val onboardingCompleted: Boolean = true
 )
 
-data class CreatorProfile(
+data class CreatorProfileInfo(
     val id: String,
     val creatorAccountId: String,
     val handle: String,

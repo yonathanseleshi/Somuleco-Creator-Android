@@ -7,7 +7,7 @@ enum class MediaType(val label: String) {
     DOCUMENT("Document")
 }
 
-data class MediaAsset(
+data class MediaFile(
     val id: String,
     val title: String,
     val fileName: String,

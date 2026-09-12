@@ -1,6 +1,6 @@
 package com.somuleco.creator.data.model
 
-data class Channel(
+data class ChannelSummary(
     val id: String,
     val creatorAccountId: String,
     val name: String,

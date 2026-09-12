@@ -23,15 +23,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.ProductType
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun ProductWizardScreen(
     onNavigate: (Screen) -> Unit,
-    onProductCreated: (String) -> Unit
+    onProductCreated: (String) -> Unit,
+    viewModel: ProductWizardViewModel = hiltViewModel()
 ) {
-    val channels by CreatorRepository.channels.collectAsState()
+    val channels by viewModel.channels.collectAsState()
     var currentStep by remember { mutableStateOf(1) }
     val totalSteps = 6
 
@@ -254,7 +255,7 @@ fun ProductWizardScreen(
                     if (currentStep < totalSteps) {
                         currentStep++
                     } else {
-                        val newProduct = CreatorRepository.createProduct(
+                        val newProduct = viewModel.createProduct(
                             title = title,
                             shortDescription = shortDesc,
                             fullDescription = fullDesc,

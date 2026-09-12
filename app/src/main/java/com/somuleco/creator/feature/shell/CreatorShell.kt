@@ -27,8 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.model.Channel
-import com.somuleco.creator.data.repository.CreatorRepository
+import com.somuleco.creator.data.model.ChannelSummary
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -39,18 +39,19 @@ fun CreatorShell(
     onNavigate: (Screen) -> Unit,
     onSignOut: () -> Unit,
     useExpandedLayout: Boolean = false,
+    viewModel: ShellViewModel = hiltViewModel(),
     content: @Composable (PaddingValues) -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    val isCreatorMode by CreatorRepository.isCreatorMode.collectAsState()
-    val channels by CreatorRepository.channels.collectAsState()
-    val selectedChannelId by CreatorRepository.selectedChannelId.collectAsState()
-    val notifications by CreatorRepository.notifications.collectAsState()
+    val isCreatorMode by viewModel.isCreatorMode.collectAsState()
+    val channels by viewModel.channels.collectAsState()
+    val selectedChannelId by viewModel.selectedChannelId.collectAsState()
+    val notifications by viewModel.notifications.collectAsState()
     val unreadNotificationsCount = notifications.count { !it.isRead }
-    val user by CreatorRepository.currentUser.collectAsState()
-    val profile by CreatorRepository.creatorProfile.collectAsState()
+    val user by viewModel.currentUser.collectAsState()
+    val profile by viewModel.creatorProfile.collectAsState()
 
     var showCreateBottomSheet by remember { mutableStateOf(false) }
     var showChannelSelectorDialog by remember { mutableStateOf(false) }
@@ -75,7 +76,7 @@ fun CreatorShell(
                     isCreatorMode = isCreatorMode,
                     selectedChannel = selectedChannel,
                     onToggleMode = {
-                        CreatorRepository.toggleCreatorMode()
+                        viewModel.toggleCreatorMode()
                         scope.launch { drawerState.close() }
                     },
                     onOpenChannelSelector = {
@@ -443,7 +444,7 @@ fun CreatorShell(
                             color = if (isCreatorMode) SomulecoPurpleLight else SomulecoBlueLight,
                             modifier = Modifier
                                 .padding(end = 8.dp)
-                                .clickable { CreatorRepository.toggleCreatorMode() }
+                                .clickable { viewModel.toggleCreatorMode() }
                                 .testTag("button_toggle_mode")
                         ) {
                             Text(
@@ -596,7 +597,7 @@ fun CreatorShell(
         }
     }
 
-    // Channel Selector Dialog
+    // ChannelSummary Selector Dialog
     if (showChannelSelectorDialog) {
         AlertDialog(
             onDismissRequest = { showChannelSelectorDialog = false },
@@ -610,7 +611,7 @@ fun CreatorShell(
                         subtitle = "Aggregate view across all ${channels.size} channels",
                         isSelected = selectedChannelId == null,
                         onClick = {
-                            CreatorRepository.selectChannelContext(null)
+                            viewModel.selectChannel(null)
                             showChannelSelectorDialog = false
                         }
                     )
@@ -620,7 +621,7 @@ fun CreatorShell(
                             subtitle = "${ch.followersCount} followers • ${ch.contentCount} posts",
                             isSelected = selectedChannelId == ch.id,
                             onClick = {
-                                CreatorRepository.selectChannelContext(ch.id)
+                                viewModel.selectChannel(ch.id)
                                 showChannelSelectorDialog = false
                             }
                         )
@@ -660,7 +661,7 @@ private fun DrawerHeader(
     displayName: String,
     handle: String,
     isCreatorMode: Boolean,
-    selectedChannel: Channel?,
+    selectedChannel: ChannelSummary?,
     onToggleMode: () -> Unit,
     onOpenChannelSelector: () -> Unit
 ) {

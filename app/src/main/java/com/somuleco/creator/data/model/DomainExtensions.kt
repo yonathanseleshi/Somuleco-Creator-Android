@@ -9,7 +9,7 @@ sealed interface AuthState {
     data object Unknown : AuthState
     data object Unauthenticated : AuthState
     data class Authenticated(
-        val user: UserReference,
+        val user: UserIdentity,
         val isCreator: Boolean,
         val hasCompletedOnboarding: Boolean
     ) : AuthState

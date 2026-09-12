@@ -20,19 +20,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.AccessType
 import com.somuleco.creator.data.model.ContentType
-import com.somuleco.creator.data.repository.CreatorRepository
 import com.somuleco.creator.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContentEditorScreen(
     onNavigate: (Screen) -> Unit,
-    onContentPublished: () -> Unit
+    onContentPublished: () -> Unit,
+    viewModel: ContentViewModel = hiltViewModel(),
+    channelListViewModel: ContentEditorChannelListViewModel = hiltViewModel()
 ) {
-    val channels by CreatorRepository.channels.collectAsState()
+    val channels by channelListViewModel.channels.collectAsState()
 
     var title by remember { mutableStateOf("") }
     var summary by remember { mutableStateOf("") }
@@ -77,13 +79,13 @@ fun ContentEditorScreen(
                 onClick = {
                     if (title.isNotBlank()) {
                         isPublishing = true
-                        CreatorRepository.createContentItem(
+                        viewModel.publish(
                             title = title,
                             body = body.ifBlank { summary },
-                            summary = summary.ifBlank { title },
-                            channelId = selectedChannelId,
-                            contentType = selectedType,
-                            accessType = selectedAccess
+                            type = selectedType,
+                            access = selectedAccess,
+                            tags = emptyList(),
+                            channelId = selectedChannelId
                         )
                         onContentPublished()
                     }
@@ -139,7 +141,7 @@ fun ContentEditorScreen(
             colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = SurfaceWhite, unfocusedContainerColor = SurfaceWhite)
         )
 
-        // Channel Selector
+        // ChannelSummary Selector
         Text("Target Channel", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
         Row(
             modifier = Modifier.fillMaxWidth(),

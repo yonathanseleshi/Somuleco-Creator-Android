@@ -23,8 +23,8 @@ import com.somuleco.creator.core.navigation.NavGraphs
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.core.navigation.navigateFromShell
 import com.somuleco.creator.core.navigation.navigateTopLevel
+import com.somuleco.creator.core.session.AppSessionState
 import com.somuleco.creator.data.model.AuthState
-import com.somuleco.creator.data.repository.CreatorRepository
 import com.somuleco.creator.feature.auth.*
 import com.somuleco.creator.feature.consumer.*
 import com.somuleco.creator.feature.creator.ai.CreatorAIScreen
@@ -64,12 +64,13 @@ import kotlinx.coroutines.launch
 fun SomulecoApp(
     windowSizeClass: WindowSizeClass = WindowSizeClass.calculateFromSize(
         DpSize(360.dp, 800.dp)
-    )
+    ),
+    appSessionState: AppSessionState
 ) {
     val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
 
-    val authState by CreatorRepository.authState.collectAsState()
+    val authState by appSessionState.authState.collectAsState()
     val useExpandedLayout = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 
     // Start destination per v0.1-navigation-semantics.md §3.2 / §5: unauthenticated lands in
@@ -78,7 +79,7 @@ fun SomulecoApp(
     // auth transitions (login/logout) are handled reactively below via LaunchedEffect, not by
     // mutating this start destination.
     val startGraph = remember {
-        when (val state = CreatorRepository.authState.value) {
+        when (val state = appSessionState.authState.value) {
             is AuthState.Authenticated -> if (state.isCreator) NavGraphs.CREATOR else NavGraphs.CONSUMER
             else -> NavGraphs.AUTH
         }
@@ -112,12 +113,16 @@ fun SomulecoApp(
     // the first composition (already handled by startGraph) so toggling mode from the drawer/top
     // bar/onboarding actually re-routes instead of leaving the user stranded on a screen the new
     // mode's drawer no longer highlights.
-    val isCreatorMode by CreatorRepository.isCreatorMode.collectAsState()
+    val isCreatorMode by appSessionState.isCreatorMode.collectAsState()
     var lastHandledMode by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(isCreatorMode) {
         val previous = lastHandledMode
         lastHandledMode = isCreatorMode
         if (previous == null || previous == isCreatorMode) return@LaunchedEffect
+        // Mode-switch landing only applies to an authenticated session — signing out
+        // resets mode to consumer as a side effect (v0.1-navigation-semantics.md §3.2),
+        // and that reset must not race the auth-state effect's navigation to Landing.
+        if (appSessionState.authState.value !is AuthState.Authenticated) return@LaunchedEffect
         val target = if (isCreatorMode) Screen.CreatorDashboard.route else Screen.Home.route
         navController.navigate(target) {
             popUpTo(navController.graph.id) { saveState = true }
@@ -127,22 +132,22 @@ fun SomulecoApp(
     }
 
     NavHost(navController = navController, startDestination = startGraph) {
-        authGraph(navController)
-        consumerGraph(navController, coroutineScope, useExpandedLayout)
-        creatorGraph(navController, coroutineScope, useExpandedLayout)
+        authGraph(navController, appSessionState)
+        consumerGraph(navController, coroutineScope, useExpandedLayout, appSessionState)
+        creatorGraph(navController, coroutineScope, useExpandedLayout, appSessionState)
     }
 }
 
 // ---------------------------------------------------------------------------------------------
 // Auth graph — public/onboarding flows, no shell chrome (v0.1-navigation-semantics.md §5).
 // ---------------------------------------------------------------------------------------------
-private fun androidx.navigation.NavGraphBuilder.authGraph(navController: NavHostController) {
+private fun androidx.navigation.NavGraphBuilder.authGraph(navController: NavHostController, appSessionState: AppSessionState) {
     navigation(startDestination = Screen.Landing.route, route = NavGraphs.AUTH) {
         composable(Screen.Landing.route) {
             LandingScreen(
                 onNavigate = { navController.navigate(it.route) },
                 onExploreClick = {
-                    CreatorRepository.setCreatorMode(false)
+                    appSessionState.setCreatorMode(false)
                     navController.navigate(Screen.Explore.route) {
                         popUpTo(NavGraphs.AUTH) { inclusive = true }
                     }
@@ -155,7 +160,7 @@ private fun androidx.navigation.NavGraphBuilder.authGraph(navController: NavHost
             LoginScreen(
                 onNavigate = { navController.navigate(it.route) },
                 onLoginSuccess = {
-                    CreatorRepository.setCreatorMode(true)
+                    appSessionState.setCreatorMode(true)
                     navController.navigate(Screen.CreatorDashboard.route) {
                         popUpTo(NavGraphs.AUTH) { inclusive = true }
                     }
@@ -187,7 +192,7 @@ private fun androidx.navigation.NavGraphBuilder.authGraph(navController: NavHost
             CreatorOnboardingScreen(
                 onNavigate = { navController.navigate(it.route) },
                 onFinish = {
-                    CreatorRepository.setCreatorMode(true)
+                    appSessionState.setCreatorMode(true)
                     navController.navigate(Screen.CreatorDashboard.route) {
                         popUpTo(NavGraphs.AUTH) { inclusive = true }
                     }
@@ -203,14 +208,15 @@ private fun androidx.navigation.NavGraphBuilder.authGraph(navController: NavHost
 private fun androidx.navigation.NavGraphBuilder.consumerGraph(
     navController: NavHostController,
     coroutineScope: kotlinx.coroutines.CoroutineScope,
-    useExpandedLayout: Boolean
+    useExpandedLayout: Boolean,
+    appSessionState: AppSessionState
 ) {
     navigation(startDestination = Screen.Home.route, route = NavGraphs.CONSUMER) {
         composable(Screen.Home.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ConsumerHomeScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenContentDetail = { contentId ->
                             navController.navigate(Screen.ContentDetail.routeFor(contentId))
                         },
@@ -220,10 +226,10 @@ private fun androidx.navigation.NavGraphBuilder.consumerGraph(
             }
         }
         composable(Screen.Explore.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ExploreScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenCreatorProfile = { navController.navigate(Screen.CreatorProfileDetail.route) },
                         onOpenProductDetail = { prodId -> navController.navigate(Screen.ProductDetail.routeFor(prodId)) }
                     )
@@ -231,12 +237,12 @@ private fun androidx.navigation.NavGraphBuilder.consumerGraph(
             }
         }
         composable(Screen.Following.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     FollowingScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenChannelDetail = { channelId ->
-                            CreatorRepository.selectChannel(channelId)
+                            appSessionState.selectChannel(channelId)
                             navController.navigate(Screen.ChannelDetail.routeFor(channelId))
                         }
                     )
@@ -244,54 +250,54 @@ private fun androidx.navigation.NavGraphBuilder.consumerGraph(
             }
         }
         composable(Screen.Subscriptions.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    SubscriptionsScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    SubscriptionsScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.Library.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     LibraryScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenProductDetail = { prodId -> navController.navigate(Screen.ProductDetail.routeFor(prodId)) }
                     )
                 }
             }
         }
         composable(Screen.Purchases.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     PurchasesScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenProductDetail = { prodId -> navController.navigate(Screen.ProductDetail.routeFor(prodId)) }
                     )
                 }
             }
         }
         composable(Screen.Saved.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     SavedScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenContentDetail = { contentId -> navController.navigate(Screen.ContentDetail.routeFor(contentId)) }
                     )
                 }
             }
         }
         composable(Screen.Notifications.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    NotificationsScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    NotificationsScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.Search.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     SearchScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenContentDetail = { contentId -> navController.navigate(Screen.ContentDetail.routeFor(contentId)) },
                         onOpenProductDetail = { prodId -> navController.navigate(Screen.ProductDetail.routeFor(prodId)) },
                         onOpenCreatorProfile = { navController.navigate(Screen.CreatorProfileDetail.route) }
@@ -300,10 +306,10 @@ private fun androidx.navigation.NavGraphBuilder.consumerGraph(
             }
         }
         composable(Screen.CreatorProfileDetail.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     CreatorProfileScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenContentDetail = { contentId -> navController.navigate(Screen.ContentDetail.routeFor(contentId)) },
                         onOpenProductDetail = { prodId -> navController.navigate(Screen.ProductDetail.routeFor(prodId)) },
                         onOpenSubscriptionPlans = { navController.navigate(Screen.SubscriptionPlansDetail.route) }
@@ -316,11 +322,11 @@ private fun androidx.navigation.NavGraphBuilder.consumerGraph(
             arguments = listOf(navArgument(Screen.ContentDetail.ARG_ID) { type = NavType.StringType; defaultValue = Screen.ContentDetail.DEFAULT_ID })
         ) { backStackEntry ->
             val contentId = backStackEntry.arguments?.getString(Screen.ContentDetail.ARG_ID) ?: Screen.ContentDetail.DEFAULT_ID
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ContentDetailScreen(
                         contentId = contentId,
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenSubscriptionPlans = { navController.navigate(Screen.SubscriptionPlansDetail.route) }
                     )
                 }
@@ -331,20 +337,20 @@ private fun androidx.navigation.NavGraphBuilder.consumerGraph(
             arguments = listOf(navArgument(Screen.ProductDetail.ARG_ID) { type = NavType.StringType; defaultValue = Screen.ProductDetail.DEFAULT_ID })
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString(Screen.ProductDetail.ARG_ID) ?: Screen.ProductDetail.DEFAULT_ID
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ProductDetailScreen(
                         productId = productId,
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onViewInLibrary = { navController.navigateTopLevel(Screen.Library.route) }
                     )
                 }
             }
         }
         composable(Screen.SubscriptionPlansDetail.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    SubscriptionPlansScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    SubscriptionPlansScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
@@ -357,23 +363,24 @@ private fun androidx.navigation.NavGraphBuilder.consumerGraph(
 private fun androidx.navigation.NavGraphBuilder.creatorGraph(
     navController: NavHostController,
     coroutineScope: kotlinx.coroutines.CoroutineScope,
-    useExpandedLayout: Boolean
+    useExpandedLayout: Boolean,
+    appSessionState: AppSessionState
 ) {
     navigation(startDestination = Screen.CreatorDashboard.route, route = NavGraphs.CREATOR) {
         composable(Screen.CreatorDashboard.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    CreatorDashboardScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    CreatorDashboardScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.Channels.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ChannelsScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenChannelDetail = { channelId ->
-                            CreatorRepository.selectChannel(channelId)
+                            appSessionState.selectChannel(channelId)
                             navController.navigate(Screen.ChannelDetail.routeFor(channelId))
                         }
                     )
@@ -385,11 +392,11 @@ private fun androidx.navigation.NavGraphBuilder.creatorGraph(
             arguments = listOf(navArgument(Screen.ChannelDetail.ARG_ID) { type = NavType.StringType; defaultValue = Screen.ChannelDetail.DEFAULT_ID })
         ) { backStackEntry ->
             val channelId = backStackEntry.arguments?.getString(Screen.ChannelDetail.ARG_ID) ?: Screen.ChannelDetail.DEFAULT_ID
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ChannelDetailScreen(
                         channelId = channelId,
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         // Real back-stack pop (v0.1-navigation-semantics.md §8) — this used to be
                         // a hardcoded jump to Screen.Channels regardless of how the screen was reached.
                         onBackClick = { navController.popBackStack() },
@@ -399,64 +406,64 @@ private fun androidx.navigation.NavGraphBuilder.creatorGraph(
             }
         }
         composable(Screen.Content.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ContentManagementScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenContentDetail = { contentId -> navController.navigate(Screen.ContentDetail.routeFor(contentId)) }
                     )
                 }
             }
         }
         composable(Screen.ContentEditor.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ContentEditorScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onContentPublished = { navController.navigateTopLevel(Screen.Content.route) }
                     )
                 }
             }
         }
         composable(Screen.Audience.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    AudienceScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    AudienceScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.Subscribers.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    SubscribersScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    SubscribersScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.Store.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     StoreScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenProductDetail = { prodId -> navController.navigate(Screen.ProductDetail.routeFor(prodId)) }
                     )
                 }
             }
         }
         composable(Screen.Products.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ProductsScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenProductDetail = { prodId -> navController.navigate(Screen.ProductDetail.routeFor(prodId)) }
                     )
                 }
             }
         }
         composable(Screen.ProductWizard.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     ProductWizardScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onProductCreated = { prodId ->
                             navController.navigate(Screen.ProductDetail.routeFor(prodId)) {
                                 popUpTo(Screen.ProductWizard.route) { inclusive = true }
@@ -467,59 +474,59 @@ private fun androidx.navigation.NavGraphBuilder.creatorGraph(
             }
         }
         composable(Screen.Media.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    MediaLibraryScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    MediaLibraryScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.Analytics.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    AnalyticsScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    AnalyticsScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.Revenue.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    RevenueScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    RevenueScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.CreatorAI.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    CreatorAIScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    CreatorAIScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.Rights.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     RightsRegistryScreen(
-                        onNavigate = { navController.navigateFromShellSafe(it) },
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
                         onOpenProductDetail = { prodId -> navController.navigate(Screen.ProductDetail.routeFor(prodId)) }
                     )
                 }
             }
         }
         composable(Screen.Integrations.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    IntegrationsScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    IntegrationsScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.CreatorSettings.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    CreatorSettingsScreen(onNavigate = { navController.navigateFromShellSafe(it) })
+                    CreatorSettingsScreen(onNavigate = { navController.navigateFromShellSafe(it, appSessionState) })
                 }
             }
         }
         composable(Screen.AccessDenied.route) {
-            ShellScreen(navController, useExpandedLayout, coroutineScope) { padding ->
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     AccessDeniedScreen(
                         onGoToCreatorActivation = {
@@ -542,6 +549,7 @@ private fun ShellScreen(
     navController: NavHostController,
     useExpandedLayout: Boolean,
     coroutineScope: kotlinx.coroutines.CoroutineScope,
+    appSessionState: AppSessionState,
     content: @Composable (androidx.compose.foundation.layout.PaddingValues) -> Unit
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -549,9 +557,9 @@ private fun ShellScreen(
 
     CreatorShell(
         currentScreen = currentScreen,
-        onNavigate = { screen -> navController.navigateFromShellSafe(screen) },
+        onNavigate = { screen -> navController.navigateFromShellSafe(screen, appSessionState) },
         onSignOut = {
-            coroutineScope.launch { CreatorRepository.logout() }
+            coroutineScope.launch { appSessionState.logout() }
             navController.navigate(Screen.Landing.route) {
                 popUpTo(navController.graph.id) { inclusive = true }
             }
@@ -563,12 +571,12 @@ private fun ShellScreen(
 
 /**
  * Route-boundary-aware wrapper around [navigateFromShell], reading current auth/Creator state
- * from [CreatorRepository] at the moment of the navigation attempt (v0.1-navigation-semantics.md
+ * from [AppSessionState] at the moment of the navigation attempt (v0.1-navigation-semantics.md
  * §5). This is what an unauthenticated or non-Creator-activated user hits when attempting a
  * protected destination via the drawer, top bar, or Create FAB.
  */
-private fun NavController.navigateFromShellSafe(screen: Screen) {
-    val state = CreatorRepository.authState.value
+private fun NavController.navigateFromShellSafe(screen: Screen, appSessionState: AppSessionState) {
+    val state = appSessionState.authState.value
     val isAuthenticated = state is AuthState.Authenticated
     val isCreator = (state as? AuthState.Authenticated)?.isCreator ?: false
     navigateFromShell(screen, isAuthenticated = isAuthenticated, isCreator = isCreator)

@@ -22,7 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
@@ -30,12 +30,13 @@ fun CreatorProfileScreen(
     onNavigate: (Screen) -> Unit,
     onOpenContentDetail: (String) -> Unit,
     onOpenProductDetail: (String) -> Unit,
-    onOpenSubscriptionPlans: () -> Unit
+    onOpenSubscriptionPlans: () -> Unit,
+    viewModel: CreatorProfileViewModel = hiltViewModel()
 ) {
-    val profile by CreatorRepository.creatorProfile.collectAsState()
-    val channels by CreatorRepository.channels.collectAsState()
-    val contentList by CreatorRepository.contentItems.collectAsState()
-    val products by CreatorRepository.products.collectAsState()
+    val profile by viewModel.profile.collectAsState()
+    val channels by viewModel.channels.collectAsState()
+    val contentList by viewModel.contentItems.collectAsState()
+    val products by viewModel.products.collectAsState()
 
     var isFollowing by remember { mutableStateOf(true) }
     var selectedTab by remember { mutableStateOf(0) }
@@ -184,7 +185,7 @@ fun CreatorProfileScreen(
                         Text("Recent Publications", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
                     }
                     items(contentList.take(2)) { item ->
-                        ConsumerFeedCard(item = item, onClick = { onOpenContentDetail(item.id) }, onLike = { CreatorRepository.toggleLike(item.id) })
+                        ConsumerFeedCard(item = item, onClick = { onOpenContentDetail(item.id) }, onLike = { viewModel.toggleLike(item.id) })
                     }
                 }
                 1 -> {
@@ -209,7 +210,7 @@ fun CreatorProfileScreen(
                 2 -> {
                     // All Posts
                     items(contentList) { item ->
-                        ConsumerFeedCard(item = item, onClick = { onOpenContentDetail(item.id) }, onLike = { CreatorRepository.toggleLike(item.id) })
+                        ConsumerFeedCard(item = item, onClick = { onOpenContentDetail(item.id) }, onLike = { viewModel.toggleLike(item.id) })
                     }
                 }
                 3 -> {

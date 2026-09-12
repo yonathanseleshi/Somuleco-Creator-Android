@@ -23,16 +23,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.model.AIMessage
-import com.somuleco.creator.data.repository.CreatorRepository
+import com.somuleco.creator.data.model.AiChatMessage
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun CreatorAIScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: CreatorAIViewModel = hiltViewModel()
 ) {
-    val messages by CreatorRepository.aiMessages.collectAsState()
+    val state by viewModel.state.collectAsState()
     var inputText by remember { mutableStateOf("") }
 
     val quickPrompts = listOf(
@@ -86,7 +88,7 @@ fun CreatorAIScreen(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .clickable {
-                            CreatorRepository.sendAIMessage(prompt)
+                            viewModel.sendMessage(prompt)
                         },
                     shape = RoundedCornerShape(20.dp),
                     color = SurfaceWhite,
@@ -104,23 +106,25 @@ fun CreatorAIScreen(
         }
 
         // Messages List
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            items(messages) { msg ->
-                AIMessageBubble(
-                    message = msg,
-                    onArtifactAction = { actionType ->
-                        when (actionType) {
-                            "DRAFT_CONTENT" -> onNavigate(Screen.ContentEditor)
-                            "CREATE_PRODUCT" -> onNavigate(Screen.ProductWizard)
-                            else -> onNavigate(Screen.ContentEditor)
-                        }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            UiStateContent(state = state) { messages ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(messages) { msg ->
+                        AIMessageBubble(
+                            message = msg,
+                            onArtifactAction = { actionType ->
+                                when (actionType) {
+                                    "DRAFT_CONTENT" -> onNavigate(Screen.ContentEditor)
+                                    "CREATE_PRODUCT" -> onNavigate(Screen.ProductWizard)
+                                    else -> onNavigate(Screen.ContentEditor)
+                                }
+                            }
+                        )
                     }
-                )
+                }
             }
         }
 
@@ -151,7 +155,7 @@ fun CreatorAIScreen(
                     if (inputText.isNotBlank()) {
                         val query = inputText
                         inputText = ""
-                        CreatorRepository.sendAIMessage(query)
+                        viewModel.sendMessage(query)
                     }
                 },
                 modifier = Modifier
@@ -168,7 +172,7 @@ fun CreatorAIScreen(
 
 @Composable
 private fun AIMessageBubble(
-    message: AIMessage,
+    message: AiChatMessage,
     onArtifactAction: (String) -> Unit
 ) {
     val isUser = message.isUser

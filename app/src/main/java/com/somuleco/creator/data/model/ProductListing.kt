@@ -22,7 +22,7 @@ data class RightsRecord(
     val protectionStatus: String = "Protected & Registered"
 )
 
-data class CreatorProduct(
+data class ProductListing(
     val id: String,
     val creatorAccountId: String,
     val creatorName: String = "Elena Rostova",

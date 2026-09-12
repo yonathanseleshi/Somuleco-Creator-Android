@@ -21,21 +21,26 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.core.design.AccessBadge
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.model.ContentItem
-import com.somuleco.creator.data.repository.CreatorRepository
+import com.somuleco.creator.data.model.ContentPost
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun ConsumerHomeScreen(
     onNavigate: (Screen) -> Unit,
     onOpenContentDetail: (String) -> Unit,
-    onOpenCreatorProfile: () -> Unit
+    onOpenCreatorProfile: () -> Unit,
+    viewModel: ConsumerHomeViewModel = hiltViewModel()
 ) {
-    val contentList by CreatorRepository.contentItems.collectAsState()
-    val channels by CreatorRepository.channels.collectAsState()
-    val profile by CreatorRepository.creatorProfile.collectAsState()
+    val state by viewModel.state.collectAsState()
+
+    UiStateContent(state = state) { home ->
+    val contentList = home.feed
+    val channels = home.channels
+    val profile = home.profile
 
     Column(
         modifier = Modifier
@@ -45,7 +50,7 @@ fun ConsumerHomeScreen(
             .testTag("screen_consumer_home"),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Creator Channel Avatar Stories Row
+        // Creator ChannelSummary Avatar Stories Row
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth()
@@ -120,16 +125,17 @@ fun ConsumerHomeScreen(
                 ConsumerFeedCard(
                     item = item,
                     onClick = { onOpenContentDetail(item.id) },
-                    onLike = { CreatorRepository.toggleLike(item.id) }
+                    onLike = { viewModel.toggleLike(item.id) }
                 )
             }
         }
+    }
     }
 }
 
 @Composable
 fun ConsumerFeedCard(
-    item: ContentItem,
+    item: ContentPost,
     onClick: () -> Unit,
     onLike: () -> Unit
 ) {

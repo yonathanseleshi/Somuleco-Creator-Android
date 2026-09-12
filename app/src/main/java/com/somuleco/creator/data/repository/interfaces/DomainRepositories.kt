@@ -30,11 +30,11 @@ data class AudienceSegment(
 
 interface AuthRepository {
     val authState: StateFlow<AuthState>
-    val currentUser: StateFlow<UserReference>
+    val currentUser: StateFlow<UserIdentity>
     val isCreatorMode: StateFlow<Boolean>
 
-    suspend fun login(email: String, password: String): Result<UserReference>
-    suspend fun signup(name: String, email: String, password: String): Result<UserReference>
+    suspend fun login(email: String, password: String): Result<UserIdentity>
+    suspend fun signup(name: String, email: String, password: String): Result<UserIdentity>
     suspend fun verifyEmail(code: String): Result<Boolean>
     suspend fun forgotPassword(email: String): Result<Boolean>
     suspend fun resetPassword(token: String, newPassword: String): Result<Boolean>
@@ -46,19 +46,29 @@ interface AuthRepository {
 }
 
 interface ChannelRepository {
-    val channels: StateFlow<List<Channel>>
-    val selectedChannelId: StateFlow<String?>
+    // Note: no `selectedChannelId` here (v0.1-client-data-access.md §7 / plan §13 Decision 9)
+    // — Channel context is shell state owned by AppSessionState. This is a stateless domain
+    // boundary; any method whose result can be scoped to a channel takes channelId as an
+    // explicit parameter instead.
+    val channels: StateFlow<List<ChannelSummary>>
 
-    fun selectChannel(id: String?)
-    fun getChannel(id: String): Channel?
-    fun createChannel(name: String, description: String, category: String, handle: String): Channel
+    // A genuine suspend boundary (v0.1-client-data-access.md §4 / plan §13 Decision 1) that a
+    // ViewModel calls from viewModelScope on load — the seam that lets a fake implementation
+    // simulate a failed load for the four-state (Loading/Success/Empty/Error) test.
+    suspend fun refresh()
+
+    fun getChannel(id: String): ChannelSummary?
+    fun createChannel(name: String, description: String, category: String, handle: String): ChannelSummary
     fun toggleFollowChannel(channelId: String)
 }
 
 interface ContentRepository {
-    val contentItems: StateFlow<List<ContentItem>>
+    // channelId: String? = null -> "All Channels" (v0.1-client-data-access.md §7). The caller
+    // (ViewModel) reads AppSessionState.selectedChannelId and passes it down; this repository
+    // never reads shell state itself.
+    fun observeContent(channelId: String? = null): StateFlow<List<ContentPost>>
 
-    fun getContent(id: String): ContentItem?
+    fun getContent(id: String): ContentPost?
     fun publishContent(
         title: String,
         body: String,
@@ -66,22 +76,22 @@ interface ContentRepository {
         access: AccessType,
         channelId: String?,
         tags: List<String>
-    ): ContentItem
+    ): ContentPost
     fun toggleLike(contentId: String)
     fun toggleBookmark(contentId: String)
     fun addComment(contentId: String, text: String)
 
-    // Draft preservation
-    var draftContentTitle: String
-    var draftContentBody: String
-    var draftContentType: ContentType
-    var draftContentAccessType: AccessType
+    // Standalone discussion feed (consumer content-detail thread), distinct from a single
+    // post's own `comments` list — preserved from the pre-Wave-05 behavior.
+    val comments: StateFlow<List<ContentComment>>
+    fun addComment(text: String)
 }
 
 interface ProductRepository {
-    val products: StateFlow<List<CreatorProduct>>
+    // channelId: String? = null -> "All Channels" (v0.1-client-data-access.md §7).
+    fun observeProducts(channelId: String? = null): StateFlow<List<ProductListing>>
 
-    fun getProduct(id: String): CreatorProduct?
+    fun getProduct(id: String): ProductListing?
     fun createProduct(
         title: String,
         description: String,
@@ -91,15 +101,25 @@ interface ProductRepository {
         productType: ProductType,
         deliverables: List<String>,
         isDprProtected: Boolean
-    ): CreatorProduct
+    ): ProductListing
 
-    // Draft preservation
-    var draftProductTitle: String
-    var draftProductDescription: String
-    var draftProductPrice: String
-    var draftProductCategory: String
-    var draftProductType: ProductType
-    var draftProductDeliverables: String
+    // The richer creation path the Product Wizard screen needs (explicit file format,
+    // license name, and download/commercial-use rights) — kept alongside the simpler
+    // `createProduct` overload above rather than collapsing the wizard's fidelity into it.
+    fun createProductDetailed(
+        title: String,
+        shortDescription: String,
+        fullDescription: String,
+        price: Double,
+        channelId: String,
+        productType: ProductType,
+        fileFormat: String,
+        licenseName: String,
+        allowDownload: Boolean,
+        allowCommercial: Boolean
+    ): ProductListing
+
+    fun purchaseProduct(productId: String)
 }
 
 interface RightsRepository {
@@ -116,7 +136,7 @@ interface MarketplaceRepository {
 }
 
 interface SubscriptionRepository {
-    val subscriptionPlan: StateFlow<SubscriptionPlan>
+    val subscriptionPlan: StateFlow<SubscriptionPlanInfo>
     val subscriberMembers: StateFlow<List<SubscriberMember>>
     val creatorSubscriptionPlans: StateFlow<List<CreatorSubscriptionPlanItem>>
     val userSubscriptions: StateFlow<List<UserSubscription>>
@@ -141,20 +161,28 @@ interface AudienceRepository {
     val audienceMetrics: StateFlow<AudienceMetrics>
     val topReferrers: StateFlow<List<TrafficSource>>
     val segments: StateFlow<List<AudienceSegment>>
+
+    // Analytics-overview + top-content-performance data. These were previously reachable only
+    // as bare (non-interface) members on the `CreatorRepository` god object — both the
+    // Audience and Analytics migrated features now reach them through this interface.
+    val analytics: StateFlow<AnalyticsOverview>
+    val topContent: StateFlow<List<TopContentPerformance>>
 }
 
 interface MediaRepository {
-    val mediaAssets: StateFlow<List<MediaAsset>>
+    val mediaAssets: StateFlow<List<MediaFile>>
 
-    fun uploadMedia(name: String, type: MediaType, size: String, channelName: String): MediaAsset
+    fun uploadMedia(name: String, type: MediaType, size: String, channelName: String): MediaFile
     fun deleteMedia(id: String)
 }
 
 interface CreatorAIRepository {
-    val chatMessages: StateFlow<List<AIMessage>>
+    val chatMessages: StateFlow<List<AiChatMessage>>
     val suggestedPrompts: List<String>
+    val recommendations: StateFlow<List<CreatorRecommendationCard>>
 
     suspend fun sendMessage(userText: String): String
+    fun dismissRecommendation(id: String)
 }
 
 interface NotificationRepository {
@@ -171,11 +199,11 @@ interface SettingsRepository {
 }
 
 interface CreatorProfileRepository {
-    val creatorProfile: StateFlow<CreatorProfile>
-    val creatorAccount: StateFlow<CreatorAccount>
+    val creatorProfile: StateFlow<CreatorProfileInfo>
+    val creatorAccount: StateFlow<CreatorAccountInfo>
     val goals: StateFlow<List<CreatorGoal>>
     val integrations: StateFlow<List<CreatorIntegration>>
 
-    fun updateProfile(profile: CreatorProfile)
+    fun updateProfile(profile: CreatorProfileInfo)
     fun toggleIntegration(id: String)
 }

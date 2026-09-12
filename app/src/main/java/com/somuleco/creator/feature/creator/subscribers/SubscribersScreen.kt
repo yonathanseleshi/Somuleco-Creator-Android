@@ -25,17 +25,18 @@ import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.model.Money
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.CreatorSubscriptionPlanItem
-import com.somuleco.creator.data.model.MembershipTier
-import com.somuleco.creator.data.repository.CreatorRepository
+import com.somuleco.creator.data.model.MembershipTierInfo
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubscribersScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: SubscribersViewModel = hiltViewModel()
 ) {
-    val subscribers by CreatorRepository.subscribers.collectAsState()
-    val plan by CreatorRepository.subscriptionPlan.collectAsState()
+    val subscribers by viewModel.subscribers.collectAsState()
+    val plan by viewModel.plan.collectAsState()
     var showCreateTierDialog by remember { mutableStateOf(false) }
 
     // Dialog form state
@@ -222,14 +223,14 @@ fun SubscribersScreen(
                     onClick = {
                         val price = newTierPrice.toDoubleOrNull() ?: 19.0
                         val tierPrice = Money(Math.round(price * 100), "USD")
-                        val tier = MembershipTier(
+                        val tier = MembershipTierInfo(
                             id = "tier_${System.currentTimeMillis()}",
                             name = newTierName.ifBlank { "Custom Creator Tier" },
                             price = tierPrice,
                             benefits = newTierBenefits.split(",").map { it.trim() }.filter { it.isNotBlank() },
                             subscriberCount = 0
                         )
-                        CreatorRepository.createSubscriptionPlan(
+                        viewModel.createSubscriptionPlan(
                             CreatorSubscriptionPlanItem(
                                 id = tier.id,
                                 name = tier.name,

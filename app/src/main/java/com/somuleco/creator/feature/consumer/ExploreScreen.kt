@@ -21,18 +21,22 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun ExploreScreen(
     onNavigate: (Screen) -> Unit,
     onOpenCreatorProfile: () -> Unit,
-    onOpenProductDetail: (String) -> Unit
+    onOpenProductDetail: (String) -> Unit,
+    viewModel: ExploreViewModel = hiltViewModel()
 ) {
-    val products by CreatorRepository.products.collectAsState()
-    val channels by CreatorRepository.channels.collectAsState()
+    val state by viewModel.state.collectAsState()
+
+    UiStateContent(state = state) { explore ->
+    val products = explore.products
 
     var selectedCategory by remember { mutableStateOf("All") }
     val categories = listOf("All", "Photography", "Sound & Audio", "AI & Code", "Education", "Design")
@@ -125,6 +129,7 @@ fun ExploreScreen(
                 }
             }
         }
+    }
     }
 }
 

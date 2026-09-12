@@ -20,15 +20,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun PurchasesScreen(
     onNavigate: (Screen) -> Unit,
-    onOpenProductDetail: (String) -> Unit
+    onOpenProductDetail: (String) -> Unit,
+    viewModel: PurchasesViewModel = hiltViewModel()
 ) {
-    val products by CreatorRepository.products.collectAsState()
+    val products by viewModel.products.collectAsState()
     val purchasedProducts = remember(products) { products.filter { it.isPurchased } }
     var downloadNoticeProduct by remember { mutableStateOf<String?>(null) }
 

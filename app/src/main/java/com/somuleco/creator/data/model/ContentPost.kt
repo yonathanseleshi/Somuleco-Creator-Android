@@ -1,13 +1,13 @@
 package com.somuleco.creator.data.model
 
-// Vocabulary aligned to the canonical ContentItem.contentType enum in
+// Vocabulary aligned to the canonical ContentPost.contentType enum in
 // `GRD/Contracts/v0.1-domain-contracts.md` §3.6 (text_post/image_post/
 // video_post/audio_post/article/gallery/file_post/poll/announcement).
 enum class ContentType {
     TEXT_POST, IMAGE_POST, VIDEO_POST, AUDIO_POST, ARTICLE, GALLERY, FILE_POST, POLL, ANNOUNCEMENT
 }
 
-// Vocabulary aligned to the canonical ContentItem.visibility enum in the
+// Vocabulary aligned to the canonical ContentPost.visibility enum in the
 // same contract (public/followers/free_subscribers/paid_subscribers/
 // membership_tier/purchase/private/unlisted). Only the values this app
 // currently uses are represented.
@@ -28,7 +28,7 @@ data class ContentComment(
     val likesCount: Int = 0
 )
 
-data class ContentItem(
+data class ContentPost(
     val id: String,
     val creatorAccountId: String,
     val creatorName: String = "Elena Rostova",

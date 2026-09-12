@@ -24,24 +24,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.core.design.MetricCard
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.model.CreatorRecommendation
-import com.somuleco.creator.data.repository.CreatorRepository
+import com.somuleco.creator.data.model.CreatorRecommendationCard
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun CreatorDashboardScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: CreatorDashboardViewModel = hiltViewModel()
 ) {
-    val profile by CreatorRepository.creatorProfile.collectAsState()
-    val analytics by CreatorRepository.analytics.collectAsState()
-    val recommendations by CreatorRepository.recommendations.collectAsState()
-    val topContent by CreatorRepository.topContent.collectAsState()
-    val transactions by CreatorRepository.transactions.collectAsState()
-    val goals by CreatorRepository.goals.collectAsState()
-    val channels by CreatorRepository.channels.collectAsState()
-    val selectedChannelId by CreatorRepository.selectedChannelId.collectAsState()
+    val state by viewModel.state.collectAsState()
+
+    UiStateContent(state = state) { dashboard ->
+    val profile = dashboard.profile
+    val analytics = dashboard.analytics
+    val recommendations = dashboard.recommendations
+    val topContent = dashboard.topContent
+    val transactions = dashboard.transactions
+    val goals = dashboard.goals
+    val channels = dashboard.channels
+    val selectedChannelId = dashboard.selectedChannelId
 
     val selectedChannel = channels.find { it.id == selectedChannelId }
     val activeRecommendation = recommendations.firstOrNull { !it.isDismissed }
@@ -121,7 +126,7 @@ fun CreatorDashboardScreen(
                     }
                 },
                 onDismiss = {
-                    CreatorRepository.dismissRecommendation(activeRecommendation.id)
+                    viewModel.dismissRecommendation(activeRecommendation.id)
                 }
             )
         }
@@ -346,11 +351,12 @@ fun CreatorDashboardScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
     }
+    }
 }
 
 @Composable
 private fun AIRecommendationHeroCard(
-    recommendation: CreatorRecommendation,
+    recommendation: CreatorRecommendationCard,
     onActionClick: () -> Unit,
     onDismiss: () -> Unit
 ) {

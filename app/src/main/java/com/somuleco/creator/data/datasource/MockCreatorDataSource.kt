@@ -1,0 +1,835 @@
+package com.somuleco.creator.data.datasource
+
+import com.somuleco.creator.core.model.Money
+import com.somuleco.creator.data.model.*
+import com.somuleco.creator.data.repository.interfaces.AudienceMetrics
+import com.somuleco.creator.data.repository.interfaces.AudienceSegment
+import com.somuleco.creator.data.repository.interfaces.TrafficSource
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+
+/**
+ * The single in-memory seed/mock store shared by every per-domain `*RepositoryImpl`
+ * (Foundation Wave 05, plan §7.3 task 4). This replaces the 1308-line `object
+ * CreatorRepository` "god object" — all the domain data and mutation logic that object
+ * held now lives here, and every `*RepositoryImpl` is a thin, single-interface adapter
+ * over this shared source (never a second god object; see plan §13 Decision 8).
+ *
+ * This data source deliberately holds **no** cross-app/shell state (auth, mode, Channel
+ * selection — see [com.somuleco.creator.core.session.AppSessionState]) and **no** UI
+ * editor draft state (see the per-feature ViewModels) — only domain collections and the
+ * mutations that manufacture them, exactly as `v0.1-client-data-access.md` §5 requires.
+ */
+@Singleton
+class MockCreatorDataSource @Inject constructor() {
+
+    // -------------------------------------------------------------------------
+    // Identity (domain-facing user reference; session identity/authState is owned by
+    // AppSessionState — this is the "who does this creator data belong to" reference).
+    // -------------------------------------------------------------------------
+    private val _currentUser = MutableStateFlow(
+        UserIdentity(
+            id = "usr_elena",
+            displayName = "Elena Rostova",
+            username = "elenarostova",
+            email = "elena@rostovaphoto.com",
+            isCreator = true
+        )
+    )
+    val currentUser: StateFlow<UserIdentity> = _currentUser.asStateFlow()
+    fun setCurrentUser(user: UserIdentity) { _currentUser.value = user }
+
+    // -------------------------------------------------------------------------
+    // Creator Account & Profile
+    // -------------------------------------------------------------------------
+    private val _creatorAccount = MutableStateFlow(
+        CreatorAccountInfo(
+            id = "acc_elena_01",
+            userId = "usr_elena",
+            status = CreatorAccountStatus.ACTIVE,
+            creatorType = "Visual Arts & Photography",
+            primaryCategory = "Photography & Lighting",
+            defaultChannelId = "ch_1",
+            onboardingCompleted = true
+        )
+    )
+    val creatorAccount: StateFlow<CreatorAccountInfo> = _creatorAccount.asStateFlow()
+
+    private val _creatorProfile = MutableStateFlow(
+        CreatorProfileInfo(
+            id = "prof_elena",
+            creatorAccountId = "acc_elena_01",
+            handle = "@elenarostova",
+            displayName = "Elena Rostova",
+            bio = "Visual storyteller, educator & photographer. Helping creators craft authentic visual narratives and sustainable creative businesses.",
+            headline = "Natural Light & Editorial Photography Educator",
+            followerCount = 14280,
+            subscriberCount = 920
+        )
+    )
+    val creatorProfile: StateFlow<CreatorProfileInfo> = _creatorProfile.asStateFlow()
+
+    fun updateProfile(profile: CreatorProfileInfo) { _creatorProfile.value = profile }
+
+    // -------------------------------------------------------------------------
+    // Channels
+    // -------------------------------------------------------------------------
+    private val _channels = MutableStateFlow(
+        listOf(
+            ChannelSummary(
+                id = "ch_1",
+                creatorAccountId = "acc_elena_01",
+                name = "Photography Masterclass",
+                slug = "photography-masterclass",
+                handle = "@elena/masterclass",
+                description = "Deep dive into natural light portraits, color science, and client workflow systems.",
+                category = "Photography",
+                followersCount = 8940,
+                subscribersCount = 610,
+                contentCount = 48,
+                isDefault = true,
+                iconEmoji = "📸",
+                primaryColorHex = 0xFF2563EB,
+                isFollowed = true
+            ),
+            ChannelSummary(
+                id = "ch_2",
+                creatorAccountId = "acc_elena_01",
+                name = "Beginner Photography",
+                slug = "beginner-photography",
+                handle = "@elena/beginners",
+                description = "Foundational concepts, composition breakdowns, and gear guides without the jargon.",
+                category = "Education",
+                followersCount = 4220,
+                subscribersCount = 240,
+                contentCount = 29,
+                iconEmoji = "🎯",
+                primaryColorHex = 0xFF7C3AED,
+                isFollowed = true
+            ),
+            ChannelSummary(
+                id = "ch_3",
+                creatorAccountId = "acc_elena_01",
+                name = "Behind the Scenes & Studio",
+                slug = "behind-the-scenes",
+                handle = "@elena/bts",
+                description = "Unfiltered studio sessions, creative struggles, business insights, and gear experiments.",
+                category = "Lifestyle & Studio",
+                followersCount = 2120,
+                subscribersCount = 90,
+                contentCount = 17,
+                iconEmoji = "🎬",
+                primaryColorHex = 0xFFEC4899,
+                isFollowed = false
+            )
+        )
+    )
+    val channels: StateFlow<List<ChannelSummary>> = _channels.asStateFlow()
+
+    fun getChannel(id: String): ChannelSummary? = _channels.value.find { it.id == id }
+
+    fun createChannel(name: String, description: String, category: String, handle: String, iconEmoji: String = "✨"): ChannelSummary {
+        val newChannel = ChannelSummary(
+            id = "ch_${System.currentTimeMillis()}",
+            creatorAccountId = _creatorAccount.value.id,
+            name = name,
+            slug = name.lowercase().replace(" ", "-"),
+            handle = if (handle.startsWith("@")) handle else "@$handle",
+            description = description,
+            category = category,
+            followersCount = 1,
+            subscribersCount = 0,
+            contentCount = 0,
+            iconEmoji = iconEmoji,
+            primaryColorHex = 0xFF7C3AED,
+            isFollowed = true
+        )
+        _channels.value = _channels.value + newChannel
+        return newChannel
+    }
+
+    fun toggleFollowChannel(channelId: String) {
+        _channels.value = _channels.value.map { ch ->
+            if (ch.id == channelId) {
+                val newFollow = !ch.isFollowed
+                ch.copy(isFollowed = newFollow, followersCount = if (newFollow) ch.followersCount + 1 else ch.followersCount - 1)
+            } else ch
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Content
+    // -------------------------------------------------------------------------
+    private val _contentItems = MutableStateFlow(
+        listOf(
+            ContentPost(
+                id = "post_1",
+                creatorAccountId = "acc_elena_01",
+                channelId = "ch_1",
+                channelName = "Photography Masterclass",
+                contentType = ContentType.ARTICLE,
+                title = "The 3 Golden Rules of Golden Hour Composition",
+                summary = "Why standard framing rules break down when shooting directly into backlight and how to rescue dynamic range.",
+                body = "When working with late afternoon backlight, traditional metering frequently crushes shadows or blows out subject skin tones. In this breakdown, we explore: 1) Negative space framing against high-contrast sky, 2) Using subtle ambient bounce from pavement or sandstone, and 3) Exposing for skin highlight preservation before post-processing in Lightroom.\n\nKey takeaway: Never position your key subject directly in front of the sun without a secondary reflective surface or intentional silhouette motive.",
+                mediaDuration = "6 min read",
+                coverEmoji = "🌅",
+                status = "PUBLISHED",
+                accessType = AccessType.PUBLIC,
+                publishedDate = "2 hours ago",
+                likesCount = 348,
+                commentsCount = 42,
+                isLiked = true,
+                isSaved = true,
+                comments = listOf(
+                    ContentComment("c_1", "Marcus Vance", "🎧", "The rim light tip completely changed my setup today Elena!", "1 hour ago", 8),
+                    ContentComment("c_2", "Sarah Lin", "🎨", "Do you shoot this with spot metering or center-weighted?", "45 mins ago", 3)
+                )
+            ),
+            ContentPost(
+                id = "post_2",
+                creatorAccountId = "acc_elena_01",
+                channelId = "ch_1",
+                channelName = "Photography Masterclass",
+                contentType = ContentType.VIDEO_POST,
+                title = "Live Studio Lighting Breakdown: 1-Light Editorial Portraits",
+                summary = "Watch full 42-minute live studio walkthrough with lighting ratios and tethered capture previews.",
+                body = "Full subscriber masterclass on single-source Octabox placement for cinematic contrast. Includes BTS camera angles, fill card adjustments, and color gel experiments.",
+                mediaDuration = "42:15",
+                coverEmoji = "💡",
+                status = "PUBLISHED",
+                accessType = AccessType.PAID_SUBSCRIBERS,
+                publishedDate = "Yesterday",
+                likesCount = 512,
+                commentsCount = 68,
+                isUnlocked = true,
+                isSaved = false
+            ),
+            ContentPost(
+                id = "post_3",
+                creatorAccountId = "acc_elena_01",
+                channelId = "ch_2",
+                channelName = "Beginner Photography",
+                contentType = ContentType.TEXT_POST,
+                title = "Stop Buying Lenses Until You Understand Focal Length Compression",
+                summary = "Quick visual guide: How 35mm vs 50mm vs 85mm alters face geometry and environment separation.",
+                body = "Focal length isn't just about 'getting closer'. It dictates visual perspective and spatial compression between your subject and background.\n\n• 35mm: Environmental context, intimate feeling.\n• 50mm: True to human eye perception.\n• 85mm: Flattering facial compression, creamy bokeh separation.",
+                mediaDuration = "Quick Tip",
+                coverEmoji = "🔍",
+                status = "PUBLISHED",
+                accessType = AccessType.PUBLIC,
+                publishedDate = "3 days ago",
+                likesCount = 890,
+                commentsCount = 114,
+                isSaved = true
+            ),
+            ContentPost(
+                id = "post_4",
+                creatorAccountId = "acc_elena_01",
+                channelId = "ch_3",
+                channelName = "Behind the Scenes & Studio",
+                contentType = ContentType.IMAGE_POST,
+                title = "Raw Studio Diaries: Preparing the European Gallery Exhibition",
+                summary = "Print proofs, frame selections, and exhibition curation notes for the upcoming gallery.",
+                body = "A preview of the large-format matte cotton rag test prints for the Zurich gallery show. We are testing three weight stocks to check ink depth.",
+                coverEmoji = "🖼️",
+                status = "PUBLISHED",
+                accessType = AccessType.MEMBERSHIP_TIER,
+                publishedDate = "5 days ago",
+                likesCount = 230,
+                commentsCount = 19,
+                isUnlocked = true,
+                isSaved = false
+            )
+        )
+    )
+    val contentItems: StateFlow<List<ContentPost>> = _contentItems.asStateFlow()
+
+    fun getContent(id: String): ContentPost? = _contentItems.value.find { it.id == id }
+
+    fun createContentItem(
+        title: String,
+        body: String,
+        summary: String,
+        channelId: String,
+        contentType: ContentType,
+        accessType: AccessType,
+        coverEmoji: String = "✨"
+    ): ContentPost {
+        val channel = _channels.value.find { it.id == channelId } ?: _channels.value.first()
+        val newItem = ContentPost(
+            id = "post_${System.currentTimeMillis()}",
+            creatorAccountId = _creatorAccount.value.id,
+            creatorName = _creatorProfile.value.displayName,
+            channelId = channel.id,
+            channelName = channel.name,
+            contentType = contentType,
+            title = title,
+            summary = summary,
+            body = body,
+            coverEmoji = coverEmoji,
+            status = "PUBLISHED",
+            accessType = accessType,
+            publishedDate = "Just now",
+            likesCount = 1,
+            commentsCount = 0
+        )
+        _contentItems.value = listOf(newItem) + _contentItems.value
+        _channels.value = _channels.value.map { ch -> if (ch.id == channel.id) ch.copy(contentCount = ch.contentCount + 1) else ch }
+        return newItem
+    }
+
+    fun toggleLike(contentId: String) {
+        _contentItems.value = _contentItems.value.map { item ->
+            if (item.id == contentId) {
+                val newLiked = !item.isLiked
+                item.copy(isLiked = newLiked, likesCount = if (newLiked) item.likesCount + 1 else item.likesCount - 1)
+            } else item
+        }
+    }
+
+    fun toggleSave(contentId: String) {
+        _contentItems.value = _contentItems.value.map { item -> if (item.id == contentId) item.copy(isSaved = !item.isSaved) else item }
+    }
+
+    fun addContentComment(contentId: String, text: String) {
+        val newComment = ContentComment(
+            id = UUID.randomUUID().toString(),
+            authorName = _currentUser.value.displayName,
+            authorEmoji = "✨",
+            text = text,
+            timestamp = "Just now"
+        )
+        _contentItems.value = _contentItems.value.map { item ->
+            if (item.id == contentId) item.copy(commentsCount = item.commentsCount + 1, comments = item.comments + newComment) else item
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Products
+    // -------------------------------------------------------------------------
+    private val _products = MutableStateFlow(
+        listOf(
+            ProductListing(
+                id = "prod_1",
+                creatorAccountId = "acc_elena_01",
+                channelId = "ch_1",
+                channelName = "Photography Masterclass",
+                title = "Complete Wedding & Portrait Business Guide",
+                slug = "wedding-portrait-business-guide",
+                shortDescription = "Comprehensive 140-page roadmap for client booking, contract systems, and pricing strategy.",
+                fullDescription = "The battle-tested playbook used to scale portrait bookings to six figures. Includes client questionnaire templates, email sequences, pricing calculator spreadsheet, and legal contract guidance verified by Digital Product Rights.",
+                price = Money(4900, "USD"),
+                productType = ProductType.DIGITAL_PRODUCT,
+                fileFormat = "PDF & Notion Template",
+                fileSizeMb = 34.2,
+                salesCount = 412,
+                revenueTotal = 20188.0,
+                iconEmoji = "📘",
+                rightsRecord = RightsRecord(
+                    id = "r_101", registeredAt = "2026-03-15", licenseName = "Somuleco Commercial Pro License",
+                    allowDownload = true, allowRedistribution = false, allowCommercialUse = true,
+                    allowModification = true, allowAiTraining = false, protectionStatus = "Protected & Verified in DPR"
+                ),
+                isPurchased = true
+            ),
+            ProductListing(
+                id = "prod_2",
+                creatorAccountId = "acc_elena_01",
+                channelId = "ch_1",
+                channelName = "Photography Masterclass",
+                title = "Cinematic Daylight Lightroom & Capture One Presets",
+                slug = "cinematic-daylight-presets",
+                shortDescription = "18 refined color profiles crafted for natural skin tones and organic golden warmth.",
+                fullDescription = "Hand-tailored color gradings crafted across 200+ commercial shoots. Includes presets for Lightroom Classic, CC Mobile, and Capture One Styles with custom curve adjustment guides.",
+                price = Money(2900, "USD"),
+                productType = ProductType.CREATIVE_ASSETS,
+                fileFormat = "XMP, DNG & COSTYLE",
+                fileSizeMb = 14.8,
+                salesCount = 890,
+                revenueTotal = 25810.0,
+                iconEmoji = "🎨",
+                rightsRecord = RightsRecord(
+                    id = "r_102", registeredAt = "2026-04-10", licenseName = "Standard Creator Asset License",
+                    allowDownload = true, allowRedistribution = false, allowCommercialUse = true,
+                    allowModification = false, allowAiTraining = false, protectionStatus = "Protected in DPR"
+                ),
+                isPurchased = false
+            ),
+            ProductListing(
+                id = "prod_3",
+                creatorAccountId = "acc_elena_01",
+                channelId = "ch_2",
+                channelName = "Beginner Photography",
+                title = "Camera Settings Cheat Sheets & Pocket Cards",
+                slug = "camera-settings-pocket-cards",
+                shortDescription = "Printable & phone-ready field reference cards for exposure triangle and lighting setups.",
+                fullDescription = "Pocket-friendly visual charts covering Aperture, Shutter Speed, ISO, and metering modes for sports, low-light, portraits, and landscapes.",
+                price = Money(1400, "USD"),
+                productType = ProductType.DIGITAL_PRODUCT,
+                fileFormat = "PDF & Mobile Wallpapers",
+                fileSizeMb = 8.5,
+                salesCount = 630,
+                revenueTotal = 8820.0,
+                iconEmoji = "📑",
+                rightsRecord = RightsRecord(
+                    id = "r_103", registeredAt = "2026-05-01", licenseName = "Personal Learning License",
+                    allowDownload = true, allowRedistribution = false, allowCommercialUse = false,
+                    allowModification = false, allowAiTraining = false, protectionStatus = "Protected in DPR"
+                ),
+                isPurchased = false
+            )
+        )
+    )
+    val products: StateFlow<List<ProductListing>> = _products.asStateFlow()
+
+    fun getProduct(id: String): ProductListing? = _products.value.find { it.id == id }
+
+    fun createProduct(
+        title: String,
+        shortDescription: String,
+        fullDescription: String,
+        price: Double,
+        channelId: String,
+        productType: ProductType,
+        fileFormat: String,
+        licenseName: String,
+        allowDownload: Boolean,
+        allowCommercial: Boolean,
+        iconEmoji: String = "📦"
+    ): ProductListing {
+        val channel = _channels.value.find { it.id == channelId } ?: _channels.value.first()
+        val newRights = RightsRecord(
+            id = "r_${System.currentTimeMillis()}", registeredAt = "Today", licenseName = licenseName,
+            allowDownload = allowDownload, allowCommercialUse = allowCommercial, protectionStatus = "Protected & Registered in DPR"
+        )
+        val newProd = ProductListing(
+            id = "prod_${System.currentTimeMillis()}",
+            creatorAccountId = _creatorAccount.value.id,
+            channelId = channel.id,
+            channelName = channel.name,
+            title = title,
+            slug = title.lowercase().replace(" ", "-"),
+            shortDescription = shortDescription,
+            fullDescription = fullDescription,
+            price = Money(Math.round(price * 100), "USD"),
+            productType = productType,
+            fileFormat = fileFormat,
+            rightsRecord = newRights,
+            iconEmoji = iconEmoji,
+            status = "ACTIVE"
+        )
+        _products.value = listOf(newProd) + _products.value
+        _productRightsMap.value = _productRightsMap.value + (newProd.id to ProductRightsConfig(
+            productId = newProd.id, productTitle = newProd.title, certificateId = "DPR-CERT-${newProd.id.uppercase()}",
+            registeredOwner = _creatorProfile.value.displayName, allowCommercialUse = allowCommercial
+        ))
+        _notifications.value = listOf(
+            NotificationItem(
+                id = UUID.randomUUID().toString(), title = "New Product Published",
+                message = "$title is now available in your store and registered in DPR",
+                timestamp = "Just now", type = NotificationType.SALE
+            )
+        ) + _notifications.value
+        return newProd
+    }
+
+    fun purchaseProduct(productId: String) {
+        _products.value = _products.value.map { prod ->
+            if (prod.id == productId) prod.copy(isPurchased = true, salesCount = prod.salesCount + 1, revenueTotal = prod.revenueTotal + prod.price.amount / 100.0) else prod
+        }
+        val product = _products.value.find { it.id == productId } ?: return
+        val grossCents = product.price.amount
+        val feeCents = Math.round(grossCents * 0.05)
+        _transactions.value = listOf(
+            TransactionItem(
+                id = "tx_${System.currentTimeMillis()}", date = "Just now", customerName = _currentUser.value.displayName,
+                itemTitle = product.title, grossAmount = Money(grossCents, product.price.currency),
+                feeAmount = Money(feeCents, product.price.currency), netAmount = Money(grossCents - feeCents, product.price.currency),
+                status = "COMPLETED", source = "Digital Product"
+            )
+        ) + _transactions.value
+        _notifications.value = listOf(
+            NotificationItem(
+                id = UUID.randomUUID().toString(), title = "Purchase Confirmed!",
+                message = "You purchased ${product.title}. Access is now unlocked in your Library.",
+                timestamp = "Just now", type = NotificationType.SALE
+            )
+        ) + _notifications.value
+    }
+
+    // -------------------------------------------------------------------------
+    // Digital Product Rights (DPR)
+    // -------------------------------------------------------------------------
+    private val _rightsRecords = MutableStateFlow(
+        listOf(
+            RightsRecord("r_101", "2026-03-15", "Somuleco Commercial Pro License", allowDownload = true, allowCommercialUse = true),
+            RightsRecord("r_102", "2026-04-10", "Standard Creator Asset License", allowDownload = true, allowCommercialUse = true),
+            RightsRecord("r_103", "2026-05-01", "Personal Learning License", allowDownload = true, allowCommercialUse = false)
+        )
+    )
+    val rightsRecords: StateFlow<List<RightsRecord>> = _rightsRecords.asStateFlow()
+
+    private val _productRightsMap = MutableStateFlow<Map<String, ProductRightsConfig>>(
+        mapOf(
+            "prod_1" to ProductRightsConfig("prod_1", "Complete Wedding & Portrait Business Guide", "DPR-CERT-8842-PROD1", "Elena Rostova (Somuleco Passport #9921)", allowCommercialUse = true, allowModification = true, licenseType = "Somuleco Commercial Pro License v2.4", registrationTimestamp = "2026-03-15T14:30:00Z"),
+            "prod_2" to ProductRightsConfig("prod_2", "Cinematic Daylight Lightroom & Capture One Presets", "DPR-CERT-9104-PROD2", "Elena Rostova (Somuleco Passport #9921)", allowCommercialUse = true, allowModification = false, licenseType = "Standard Creator Asset License v1.2", registrationTimestamp = "2026-04-10T09:15:00Z"),
+            "prod_3" to ProductRightsConfig("prod_3", "Camera Settings Cheat Sheets & Pocket Cards", "DPR-CERT-9452-PROD3", "Elena Rostova (Somuleco Passport #9921)", allowCommercialUse = false, allowModification = false, licenseType = "Personal Learning Non-Commercial License", registrationTimestamp = "2026-05-01T16:45:00Z")
+        )
+    )
+
+    fun getProductRights(productId: String): ProductRightsConfig? =
+        _productRightsMap.value[productId] ?: _products.value.find { it.id == productId }?.let {
+            ProductRightsConfig(productId = it.id, productTitle = it.title, certificateId = "DPR-CERT-${it.id.uppercase()}", registeredOwner = _creatorProfile.value.displayName)
+        }
+
+    fun updateProductRights(config: ProductRightsConfig) {
+        _productRightsMap.value = _productRightsMap.value + (config.productId to config)
+        _products.value = _products.value.map { prod ->
+            if (prod.id == config.productId) prod.copy(rightsRecord = prod.rightsRecord.copy(licenseName = config.licenseType, allowCommercialUse = config.allowCommercialUse, allowModification = config.allowModification, allowAiTraining = config.allowAiTraining)) else prod
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Marketplace
+    // -------------------------------------------------------------------------
+    private val _marketplaceMap = MutableStateFlow<Map<String, MarketplaceListing>>(
+        mapOf(
+            "prod_1" to MarketplaceListing("prod_1", "Complete Wedding & Portrait Business Guide", true, Money(4900, "USD")),
+            "prod_2" to MarketplaceListing("prod_2", "Cinematic Daylight Lightroom & Capture One Presets", true, Money(2900, "USD")),
+            "prod_3" to MarketplaceListing("prod_3", "Camera Settings Cheat Sheets & Pocket Cards", false, Money(1400, "USD"))
+        )
+    )
+
+    fun getMarketplaceListing(productId: String): MarketplaceListing =
+        _marketplaceMap.value[productId] ?: run {
+            val prod = getProduct(productId)
+            MarketplaceListing(productId = productId, productTitle = prod?.title ?: "Digital Product", listingPrice = prod?.price ?: Money(2900, "USD"))
+        }
+
+    fun updateMarketplaceListing(listing: MarketplaceListing) {
+        _marketplaceMap.value = _marketplaceMap.value + (listing.productId to listing)
+    }
+
+    fun togglePublishMarketplace(productId: String): MarketplaceListing {
+        val current = getMarketplaceListing(productId)
+        val updated = current.copy(isPublished = !current.isPublished, lastSyncedAt = "Just now")
+        updateMarketplaceListing(updated)
+        return updated
+    }
+
+    // -------------------------------------------------------------------------
+    // Subscriptions & Plans
+    // -------------------------------------------------------------------------
+    private val _subscriptionPlan = MutableStateFlow(
+        SubscriptionPlanInfo(
+            id = "plan_elena", creatorAccountId = "acc_elena_01", channelId = "ch_1",
+            name = "Elena's Creator Circle",
+            description = "Support ongoing creative education, unlock deep-dive masterclasses, raw session files, and private critiques.",
+            tiers = listOf(
+                MembershipTierInfo("tier_free", "Free Community Follower", Money(0, "USD"), benefits = listOf("Weekly educational newsletter", "Public feed posts & tips", "Community discussions"), subscriberCount = 11560, badgeColorHex = 0xFF64748B),
+                MembershipTierInfo("tier_insider", "Creator Insider", Money(900, "USD"), benefits = listOf("Subscriber-only video masterclasses", "Downloadable RAW files for practice", "Monthly live Q&A session", "20% discount on all digital store products"), subscriberCount = 710, isFeatured = true, badgeColorHex = 0xFF7C3AED),
+                MembershipTierInfo("tier_pro", "Studio Pro Mentorship", Money(3900, "USD"), benefits = listOf("All Insider tier benefits", "Quarterly 1-on-1 portfolio video critique", "Direct Creator messaging access", "Free access to all new preset releases"), subscriberCount = 210, badgeColorHex = 0xFF2563EB)
+            ),
+            isSubscribed = true, activeTierId = "tier_insider"
+        )
+    )
+    val subscriptionPlan: StateFlow<SubscriptionPlanInfo> = _subscriptionPlan.asStateFlow()
+
+    private val _creatorSubscriptionPlans = MutableStateFlow(
+        listOf(
+            CreatorSubscriptionPlanItem("plan_tier_free", "Free Community Access", Money(0, "USD"), isFree = true, benefits = listOf("Public channel posts", "Community questions", "Weekly highlights"), subscriberCount = 11560, badgeColorHex = 0xFF64748B),
+            CreatorSubscriptionPlanItem("plan_tier_insider", "Creator Insider Tier", Money(900, "USD"), benefits = listOf("Full masterclasses", "Downloadable practice files", "Monthly AMA live", "20% Store discount"), subscriberCount = 710, isActive = true, badgeColorHex = 0xFF7C3AED),
+            CreatorSubscriptionPlanItem("plan_tier_pro", "Studio Pro Mentorship", Money(3900, "USD"), benefits = listOf("All Insider benefits", "Quarterly portfolio video review", "Direct message priority", "Free new releases"), subscriberCount = 210, isActive = true, badgeColorHex = 0xFF2563EB)
+        )
+    )
+    val creatorSubscriptionPlans: StateFlow<List<CreatorSubscriptionPlanItem>> = _creatorSubscriptionPlans.asStateFlow()
+
+    private val _userSubscriptions = MutableStateFlow(
+        listOf(
+            UserSubscription("usub_1", "usr_elena", "Elena Rostova", "@elenarostova", "📸", "Creator Insider", Money(900, "USD"), "Oct 01, 2026", "ACTIVE", "Masterclass tutorials, RAW practice downloads & community perks"),
+            UserSubscription("usub_2", "usr_marcus", "Marcus Vance", "@marcusvance", "🎧", "Sound Designer Pro", Money(1400, "USD"), "Oct 12, 2026", "ACTIVE", "Monthly audio stems, Ableton templates & sound design presets")
+        )
+    )
+    val userSubscriptions: StateFlow<List<UserSubscription>> = _userSubscriptions.asStateFlow()
+
+    fun createSubscriptionPlan(plan: CreatorSubscriptionPlanItem) {
+        _creatorSubscriptionPlans.value = _creatorSubscriptionPlans.value + plan
+        val newTier = MembershipTierInfo(id = plan.id, name = plan.name, price = plan.monthlyPrice, description = plan.benefits.joinToString(", ").ifBlank { "Member exclusive benefits" }, perks = plan.benefits)
+        _subscriptionPlan.value = _subscriptionPlan.value.copy(tiers = _subscriptionPlan.value.tiers + newTier)
+    }
+
+    fun updateSubscriptionPlan(plan: CreatorSubscriptionPlanItem) {
+        _creatorSubscriptionPlans.value = _creatorSubscriptionPlans.value.map { if (it.id == plan.id) plan else it }
+    }
+
+    fun cancelUserSubscription(id: String) {
+        _userSubscriptions.value = _userSubscriptions.value.filterNot { it.id == id }
+    }
+
+    private val _subscribers = MutableStateFlow(
+        listOf(
+            SubscriberMember("sub_1", "Marcus Vance", "@marcusvance", "🎧", "Studio Pro Mentorship", 39.0, "Joined 4 months ago"),
+            SubscriberMember("sub_2", "Aria Chen", "@ariachen", "💻", "Creator Insider", 9.0, "Joined 3 months ago"),
+            SubscriberMember("sub_3", "Liam O'Connor", "@liamphoto", "📷", "Creator Insider", 9.0, "Joined 2 months ago"),
+            SubscriberMember("sub_4", "Sophia Rossi", "@sophiar", "🌸", "Studio Pro Mentorship", 39.0, "Joined 1 month ago"),
+            SubscriberMember("sub_5", "David K.", "@davidk", "🎨", "Creator Insider", 9.0, "Joined 2 weeks ago")
+        )
+    )
+    val subscribers: StateFlow<List<SubscriberMember>> = _subscribers.asStateFlow()
+
+    fun subscribeTier(tierId: String) {
+        val currentPlan = _subscriptionPlan.value
+        val tier = currentPlan.tiers.find { it.id == tierId }
+        _subscriptionPlan.value = currentPlan.copy(isSubscribed = true, activeTierId = tierId)
+        if (tier != null && tier.price.amount > 0) {
+            val grossCents = tier.price.amount
+            val feeCents = Math.round(grossCents * 0.05)
+            _transactions.value = listOf(
+                TransactionItem(
+                    id = "tx_${System.currentTimeMillis()}", date = "Just now", customerName = _currentUser.value.displayName,
+                    itemTitle = "Subscription to ${tier.name}", grossAmount = Money(grossCents, tier.price.currency),
+                    feeAmount = Money(feeCents, tier.price.currency), netAmount = Money(grossCents - feeCents, tier.price.currency),
+                    status = "COMPLETED", source = "Subscription"
+                )
+            ) + _transactions.value
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Revenue & Transactions — values are DERIVED from the transaction ledger
+    // (plan §7.3 task 6), not hardcoded constants as `CreatorRepository` had them.
+    // -------------------------------------------------------------------------
+    private val _transactions = MutableStateFlow(
+        listOf(
+            TransactionItem("tx_1", "Today, 14:20", "Liam O'Connor", "Wedding & Portrait Business Guide", Money(4900, "USD"), Money(245, "USD"), Money(4655, "USD"), status = "COMPLETED", source = "Digital Product"),
+            TransactionItem("tx_2", "Today, 11:05", "Sophia Rossi", "Studio Pro Mentorship (Renewal)", Money(3900, "USD"), Money(195, "USD"), Money(3705, "USD"), status = "COMPLETED", source = "Subscription"),
+            TransactionItem("tx_3", "Yesterday", "Hanna Schmidt", "Cinematic Daylight Lightroom Presets", Money(2900, "USD"), Money(145, "USD"), Money(2755, "USD"), status = "COMPLETED", source = "Digital Product"),
+            TransactionItem("tx_4", "Sep 05", "Kenji Sato", "Camera Settings Pocket Cards", Money(1400, "USD"), Money(70, "USD"), Money(1330, "USD"), status = "COMPLETED", source = "Digital Product"),
+            TransactionItem("tx_5", "Sep 04", "Marcus Vance", "Creator Insider (Renewal)", Money(900, "USD"), Money(45, "USD"), Money(855, "USD"), status = "COMPLETED", source = "Subscription")
+        )
+    )
+    val transactions: StateFlow<List<TransactionItem>> = _transactions.asStateFlow()
+
+    fun getTransaction(id: String): TransactionItem? = _transactions.value.find { it.id == id }
+
+    /** Sum of every completed transaction's net amount, in major currency units. */
+    val totalRevenue: Double
+        get() = _transactions.value.filter { it.status == "COMPLETED" }.sumOf { it.netAmount.amount } / 100.0
+
+    /** 80% of total revenue is modeled as already settled/available for payout. */
+    val availableBalance: Double get() = totalRevenue * 0.80
+
+    /** The remainder is modeled as pending settlement. */
+    val pendingBalance: Double get() = totalRevenue * 0.20
+
+    /** Recurring (subscription-sourced) share of total revenue, annualized to a monthly figure. */
+    val monthlyRecurringRevenue: Double
+        get() = _transactions.value.filter { it.status == "COMPLETED" && it.source == "Subscription" }.sumOf { it.netAmount.amount } / 100.0 * 2.05
+
+    /** Store/product-sourced share of revenue. */
+    val productSalesRevenue: Double
+        get() = _products.value.sumOf { it.revenueTotal }
+
+    // -------------------------------------------------------------------------
+    // Audience & Analytics
+    // -------------------------------------------------------------------------
+    private val _analytics = MutableStateFlow(AnalyticsOverview())
+    val analytics: StateFlow<AnalyticsOverview> = _analytics.asStateFlow()
+
+    private val _topContent = MutableStateFlow(
+        listOf(
+            TopContentPerformance("tc_1", "The 3 Golden Rules of Golden Hour", "Photography Masterclass", "34.8K views", "6.2% follow rate", 480, "Article"),
+            TopContentPerformance("tc_2", "Stop Buying Lenses Until You Understand Focal Length", "Beginner Photography", "58.2K views", "8.9% follow rate", 820, "Quick Tip"),
+            TopContentPerformance("tc_3", "1-Light Editorial Portrait Walkthrough", "Photography Masterclass", "22.1K views", "14.1% subscriber conversion", 140, "Video")
+        )
+    )
+    val topContent: StateFlow<List<TopContentPerformance>> = _topContent.asStateFlow()
+
+    private val _audienceMetrics = MutableStateFlow(AudienceMetrics())
+    val audienceMetrics: StateFlow<AudienceMetrics> = _audienceMetrics.asStateFlow()
+
+    private val _topReferrers = MutableStateFlow(
+        listOf(
+            TrafficSource("Somuleco Discover", "44%", "8,120 visitors", "🌐"),
+            TrafficSource("Creator Profile Link", "28%", "5,180 visitors", "🔗"),
+            TrafficSource("YouTube Video Description", "18%", "3,320 visitors", "▶️"),
+            TrafficSource("Direct & Email Newsletter", "10%", "1,840 visitors", "✉️")
+        )
+    )
+    val topReferrers: StateFlow<List<TrafficSource>> = _topReferrers.asStateFlow()
+
+    private val _segments = MutableStateFlow(
+        listOf(
+            AudienceSegment("seg_1", "Highly Engaged Learners", 420, "Consistently read articles & bookmark tips", "18.2%"),
+            AudienceSegment("seg_2", "Gear & Equipment Enthusiasts", 890, "Interact primarily with focal length and camera cheat sheets", "12.4%"),
+            AudienceSegment("seg_3", "Active Masterclass Subscribers", 920, "Paying monthly recurring members with high retention", "94.2%"),
+            AudienceSegment("seg_4", "Casual Discovery Visitors", 12480, "Free followers browsing public feed content", "4.8%")
+        )
+    )
+    val segments: StateFlow<List<AudienceSegment>> = _segments.asStateFlow()
+
+    // -------------------------------------------------------------------------
+    // Media Library
+    // -------------------------------------------------------------------------
+    private val _mediaAssets = MutableStateFlow(
+        listOf(
+            MediaFile("med_1", "Golden Hour Sunburst Proof", "IMG_8921_raw.jpg", MediaType.IMAGE, "28.4 MB", uploadDate = "Today", channelName = "Photography Masterclass"),
+            MediaFile("med_2", "1-Light Studio Masterclass Reel", "studio_lighting_4k.mp4", MediaType.VIDEO, "1.4 GB", durationText = "42:15", uploadDate = "Yesterday", channelName = "Photography Masterclass"),
+            MediaFile("med_3", "Portrait Contract Template", "wedding_client_contract_v3.pdf", MediaType.DOCUMENT, "2.1 MB", uploadDate = "Sep 02", channelName = "Beginner Photography"),
+            MediaFile("med_4", "Studio Audio Podcast Ep 12", "creative_struggles_audio.wav", MediaType.AUDIO, "84.2 MB", durationText = "28:40", uploadDate = "Aug 29", channelName = "Behind the Scenes & Studio")
+        )
+    )
+    val mediaAssets: StateFlow<List<MediaFile>> = _mediaAssets.asStateFlow()
+
+    fun uploadMedia(name: String, type: MediaType, size: String, channelName: String): MediaFile {
+        val asset = MediaFile(id = "med_${System.currentTimeMillis()}", title = name, fileName = name, type = type, sizeText = size, uploadDate = "Just now", channelName = channelName, status = "READY")
+        _mediaAssets.value = listOf(asset) + _mediaAssets.value
+        return asset
+    }
+
+    fun deleteMedia(id: String) { _mediaAssets.value = _mediaAssets.value.filterNot { it.id == id } }
+
+    // -------------------------------------------------------------------------
+    // Creator AI
+    // -------------------------------------------------------------------------
+    private val _recommendations = MutableStateFlow(
+        listOf(
+            CreatorRecommendationCard("rec_1", "Convert High-Performing Beginner Content into a Mini-Course", "Your 'Focal Length Compression' post generated 820 new followers this week with a 74% completion rate.", "+37% higher viewer-to-follower ratio than your channel benchmark", "Generate Course Outline", "PRODUCT"),
+            CreatorRecommendationCard("rec_2", "Launch a Subscriber Q&A Live Session", "42 new Insider subscribers joined this month and have not yet attended an onboarding session.", "Subscribers who attend a live session retain 3.2x longer", "Schedule Live Session", "COMMUNITY"),
+            CreatorRecommendationCard("rec_3", "Register Autumn Editorial Preset Pack in Digital Product Rights", "You have 3 unpublished preset drafts in your media library ready for monetization.", "Preset sales peak by 48% between September and November", "Start Product Wizard", "PRODUCT")
+        )
+    )
+    val recommendations: StateFlow<List<CreatorRecommendationCard>> = _recommendations.asStateFlow()
+
+    private val _aiMessages = MutableStateFlow(
+        listOf(
+            AiChatMessage("msg_1", AIMessageRole.SYSTEM, "Welcome to Creator AI. I understand your channels, audience analytics, and Digital Product Rights status. How can I help you grow today?", "10:00 AM"),
+            AiChatMessage("msg_2", AIMessageRole.USER, "What topic should I create my next Photography Masterclass post on?", "10:01 AM"),
+            AiChatMessage(
+                "msg_3", AIMessageRole.ASSISTANT,
+                "Based on your recent engagement metrics, your audience is asking repeatedly about handling harsh overhead midday sun. Here is an actionable post concept with high conversion potential.",
+                "10:01 AM",
+                artifactTitle = "Post Draft: 4 Ways to Master Harsh Midday Sunlight",
+                artifactType = "POST_DRAFT",
+                artifactContent = "Title: 4 Ways to Master Harsh Midday Sunlight\n\nMost photographers pack their gear away between 11 AM and 3 PM. Here is how editorial pros use harsh overhead light instead:\n\n1. Find Deep Architectural Shadows: Use the hard cutoff line as a dramatic graphic element.\n2. Backlight + Diffuser: Turn your subject away from the sun and hold a 1-stop diffusion scrim directly above.\n3. Emphasize Specular Highlights: Don't fear high contrast—embrace deep blacks and vivid skin glints."
+            )
+        )
+    )
+    val aiMessages: StateFlow<List<AiChatMessage>> = _aiMessages.asStateFlow()
+
+    val suggestedPrompts: List<String> = listOf(
+        "Analyze this week's revenue and churn risks",
+        "Generate a lesson outline for Photography Masterclass",
+        "Draft a commercial license for my preset bundle",
+        "Suggest ideas to convert free followers to paid subscribers"
+    )
+
+    fun sendAIMessage(prompt: String): AiChatMessage {
+        val userMsg = AiChatMessage(id = UUID.randomUUID().toString(), role = AIMessageRole.USER, content = prompt, timestamp = "Just now")
+        _aiMessages.value = _aiMessages.value + userMsg
+        val assistantResponse = generateContextualAIResponse(prompt)
+        _aiMessages.value = _aiMessages.value + assistantResponse
+        return assistantResponse
+    }
+
+    private fun generateContextualAIResponse(prompt: String): AiChatMessage {
+        val lower = prompt.lowercase()
+        return when {
+            lower.contains("create") || lower.contains("post") || lower.contains("draft") || lower.contains("next") -> AiChatMessage(
+                id = UUID.randomUUID().toString(), role = AIMessageRole.ASSISTANT,
+                content = "Here is a high-impact content draft crafted for your Photography Masterclass audience based on current engagement trends:",
+                timestamp = "Just now",
+                artifactTitle = "Draft: Mastering Backlit Editorial Portraits", artifactType = "POST_DRAFT",
+                artifactContent = "Title: 3 Backlight Adjustments That Eliminate Blown Highlights\n\nWhen positioning subjects against sunset light:\n1. Feather your key light 45° across the face instead of shooting head-on.\n2. Use a black flag on the non-key side to preserve deep contrast.\n3. Meter specifically for the skin tones on the cheekbone.\n\nTry this on your next golden hour shoot!"
+            )
+            lower.contains("grow") || lower.contains("audience") -> AiChatMessage(
+                id = UUID.randomUUID().toString(), role = AIMessageRole.ASSISTANT,
+                content = "Audience Growth Strategy for Elena Rostova:\n\n• Your 'Beginner Photography' channel is currently growing 2.4x faster than Masterclass. Creating 2 weekly quick tips will accelerate your top-of-funnel discovery.\n• Cross-post key insights from your subscriber tutorials as 60-second summary cards.\n• Host a monthly live portfolio review to convert free followers into paid subscribers.",
+                timestamp = "Just now"
+            )
+            lower.contains("product") || lower.contains("monetize") || lower.contains("sell") -> AiChatMessage(
+                id = UUID.randomUUID().toString(), role = AIMessageRole.ASSISTANT,
+                content = "Digital Product Opportunity Identified:\n\nYour audience engages heavily with your lighting breakdowns. Here is a recommended product concept ready for Digital Product Rights protection:",
+                timestamp = "Just now",
+                artifactTitle = "Product Concept: Studio Lighting Blueprint & Ratio Cards", artifactType = "PRODUCT_CONCEPT",
+                artifactContent = "Format: 25 High-Res Digital Blueprint Cards + Behind-the-Scenes Video Commentary\nRecommended Price: $34.00\nTarget Audience: Portrait and commercial photographers upgrading their home studio setups."
+            )
+            else -> AiChatMessage(
+                id = UUID.randomUUID().toString(), role = AIMessageRole.ASSISTANT,
+                content = "I have analyzed your creator ecosystem ($${"%.0f".format(totalRevenue)} revenue, ${_creatorProfile.value.subscriberCount} subscribers, ${_channels.value.size} active channels). Your strongest leverage point this week is publishing a new subscriber masterclass to reduce month-end churn.",
+                timestamp = "Just now"
+            )
+        }
+    }
+
+    fun dismissRecommendation(recId: String) {
+        _recommendations.value = _recommendations.value.map { rec -> if (rec.id == recId) rec.copy(isDismissed = true) else rec }
+    }
+
+    // -------------------------------------------------------------------------
+    // Notifications
+    // -------------------------------------------------------------------------
+    private val _notifications = MutableStateFlow(
+        listOf(
+            NotificationItem("notif_1", "New Studio Pro Subscriber!", "Sophia Rossi subscribed to Studio Pro Mentorship ($39/mo)", "20 mins ago", NotificationType.SUBSCRIBER),
+            NotificationItem("notif_2", "Product Sale Confirmed", "Liam O'Connor purchased Complete Wedding & Portrait Business Guide ($49)", "2 hours ago", NotificationType.SALE),
+            NotificationItem("notif_3", "Digital Rights Registration Complete", "Rights Record #r_103 successfully registered and protected in DPR", "1 day ago", NotificationType.RIGHTS),
+            NotificationItem("notif_4", "Creator AI Recommendation", "New insight available: Convert high-performing beginner content to product", "2 days ago", NotificationType.AI_RECOMMENDATION)
+        )
+    )
+    val notifications: StateFlow<List<NotificationItem>> = _notifications.asStateFlow()
+
+    fun markAsRead(id: String) { _notifications.value = _notifications.value.map { if (it.id == id) it.copy(isRead = true) else it } }
+    fun markAllAsRead() { _notifications.value = _notifications.value.map { it.copy(isRead = true) } }
+
+    // -------------------------------------------------------------------------
+    // Settings, Integrations & Goals
+    // -------------------------------------------------------------------------
+    private val _settings = MutableStateFlow(CreatorSettingsData())
+    val settings: StateFlow<CreatorSettingsData> = _settings.asStateFlow()
+    fun updateSettings(settings: CreatorSettingsData) { _settings.value = settings }
+
+    private val _integrations = MutableStateFlow(
+        listOf(
+            CreatorIntegration("int_1", "Somuleco Passport", "ECOSYSTEM", "Portable creator identity and reputation verification across Somuleco.", "🛡️", true),
+            CreatorIntegration("int_2", "Digital Product Rights Registry", "ECOSYSTEM", "Real-time copyright and licensing registration for products and media.", "📜", true),
+            CreatorIntegration("int_3", "YouTube Channel Sync", "SOCIAL", "Auto-import video catalog and track viewer conversion.", "▶️", true),
+            CreatorIntegration("int_4", "Instagram Creator API", "SOCIAL", "Sync reels and stories to your Behind the Scenes channel.", "📸", false),
+            CreatorIntegration("int_5", "Dropbox Cloud Storage", "STORAGE", "Sync RAW photo catalogs and project deliveries.", "📦", true)
+        )
+    )
+    val integrations: StateFlow<List<CreatorIntegration>> = _integrations.asStateFlow()
+
+    fun toggleIntegration(id: String) {
+        _integrations.value = _integrations.value.map { if (it.id == id) it.copy(isConnected = !it.isConnected) else it }
+    }
+
+    private val _goals = MutableStateFlow(
+        listOf(
+            CreatorGoal("g_1", "Reach 1,000 Paid Subscribers", "1,000", "Dec 2026", isAchieved = false, progress = 0.84f),
+            CreatorGoal("g_2", "Earn $25,000 Monthly Revenue", "$25K/mo", "Nov 2026", isAchieved = false, progress = 0.74f),
+            CreatorGoal("g_3", "Publish 50 Masterclass Lessons", "50 Lessons", "Oct 2026", isAchieved = true, progress = 1.0f)
+        )
+    )
+    val goals: StateFlow<List<CreatorGoal>> = _goals.asStateFlow()
+
+    // -------------------------------------------------------------------------
+    // Standalone Comments (consumer content-detail thread)
+    // -------------------------------------------------------------------------
+    private val _comments = MutableStateFlow(
+        listOf(
+            ContentComment("c_1", "Marcus Vance", "🎧", "The rim light tip completely changed my setup today Elena!", "1 hour ago", 8),
+            ContentComment("c_2", "Sarah Lin", "🎨", "Do you shoot this with spot metering or center-weighted?", "45 mins ago", 3),
+            ContentComment("c_3", "David Kim", "📸", "Can't wait to test this on Saturday's outdoor portrait session!", "20 mins ago", 1)
+        )
+    )
+    val comments: StateFlow<List<ContentComment>> = _comments.asStateFlow()
+
+    fun addComment(text: String) {
+        _comments.value = _comments.value + ContentComment(id = UUID.randomUUID().toString(), authorName = _currentUser.value.displayName, authorEmoji = "✨", text = text, timestamp = "Just now")
+    }
+}

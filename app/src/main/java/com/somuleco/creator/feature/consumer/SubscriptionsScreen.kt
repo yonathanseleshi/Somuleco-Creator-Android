@@ -20,14 +20,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun SubscriptionsScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: SubscriptionsViewModel = hiltViewModel()
 ) {
-    val subscriptions by CreatorRepository.userSubscriptions.collectAsState()
+    val subscriptions by viewModel.subscriptions.collectAsState()
     var cancelNotice by remember { mutableStateOf<String?>(null) }
 
     Column(
@@ -183,7 +184,7 @@ fun SubscriptionsScreen(
                                 }
                                 OutlinedButton(
                                     onClick = {
-                                        CreatorRepository.cancelUserSubscription(sub.id)
+                                        viewModel.cancelUserSubscription(sub.id)
                                         cancelNotice = "Subscription to ${sub.creatorName} has been canceled."
                                     },
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)

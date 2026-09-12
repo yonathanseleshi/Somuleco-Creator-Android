@@ -21,14 +21,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun SubscriptionPlansScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: SubscriptionPlansViewModel = hiltViewModel()
 ) {
-    val plan by CreatorRepository.subscriptionPlan.collectAsState()
+    val plan by viewModel.plan.collectAsState()
     var selectedTierId by remember { mutableStateOf(plan.tiers.firstOrNull()?.id ?: "") }
     var subscribedTierName by remember { mutableStateOf<String?>(null) }
 

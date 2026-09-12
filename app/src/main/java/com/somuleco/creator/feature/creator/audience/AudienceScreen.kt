@@ -22,17 +22,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.core.design.MetricCard
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun AudienceScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: AudienceViewModel = hiltViewModel()
 ) {
-    val analytics by CreatorRepository.analytics.collectAsState()
-    val subscribers by CreatorRepository.subscribers.collectAsState()
+    val state by viewModel.state.collectAsState()
 
     Column(
         modifier = Modifier
@@ -46,6 +47,12 @@ fun AudienceScreen(
             Text("Audience & Relationships", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("Direct audience relationships powered by the Somuleco ecosystem", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         }
+
+        UiStateContent(state = state) { audience ->
+        val analytics = audience.analytics
+        val subscribers = audience.subscribers
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -130,6 +137,8 @@ fun AudienceScreen(
                     }
                 }
             }
+        }
+        }
         }
     }
 }

@@ -23,7 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
@@ -92,7 +92,8 @@ fun CreatorActivationScreen(
 @Composable
 fun CreatorOnboardingScreen(
     onNavigate: (Screen) -> Unit,
-    onFinish: () -> Unit
+    onFinish: () -> Unit,
+    viewModel: CreatorOnboardingViewModel = hiltViewModel()
 ) {
     var currentStep by remember { mutableStateOf(1) }
     val totalSteps = 9
@@ -296,7 +297,7 @@ fun CreatorOnboardingScreen(
                 if (currentStep < totalSteps) {
                     currentStep++
                 } else {
-                    CreatorRepository.setCreatorMode(true)
+                    viewModel.setCreatorMode(true)
                     onFinish()
                 }
             },

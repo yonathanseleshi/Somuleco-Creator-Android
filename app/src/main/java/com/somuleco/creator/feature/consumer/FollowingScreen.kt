@@ -19,15 +19,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun FollowingScreen(
     onNavigate: (Screen) -> Unit,
-    onOpenChannelDetail: (String) -> Unit
+    onOpenChannelDetail: (String) -> Unit,
+    viewModel: FollowingViewModel = hiltViewModel()
 ) {
-    val channels by CreatorRepository.channels.collectAsState()
+    val channels by viewModel.channels.collectAsState()
     val followedChannels = remember(channels) { channels.filter { it.isFollowed } }
 
     Column(
@@ -123,7 +124,7 @@ fun FollowingScreen(
                                 )
                             }
                             OutlinedButton(
-                                onClick = { CreatorRepository.toggleFollowChannel(channel.id) },
+                                onClick = { viewModel.toggleFollowChannel(channel.id) },
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text("Unfollow", style = MaterialTheme.typography.labelMedium, color = TextSecondary)

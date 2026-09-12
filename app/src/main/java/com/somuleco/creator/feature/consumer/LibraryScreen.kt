@@ -20,19 +20,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun LibraryScreen(
     onNavigate: (Screen) -> Unit,
-    onOpenProductDetail: (String) -> Unit
+    onOpenProductDetail: (String) -> Unit,
+    viewModel: LibraryViewModel = hiltViewModel()
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Purchases", "Subscriptions", "Saved")
 
-    val products by CreatorRepository.products.collectAsState()
-    val plan by CreatorRepository.subscriptionPlan.collectAsState()
+    val products by viewModel.products.collectAsState()
+    val plan by viewModel.plan.collectAsState()
 
     Column(
         modifier = Modifier

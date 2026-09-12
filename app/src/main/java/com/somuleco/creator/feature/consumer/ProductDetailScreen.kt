@@ -25,7 +25,7 @@ import com.somuleco.creator.core.model.Money
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.MarketplaceListing
 import com.somuleco.creator.data.model.ProductRightsConfig
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,10 +33,11 @@ import com.somuleco.creator.ui.theme.*
 fun ProductDetailScreen(
     productId: String,
     onNavigate: (Screen) -> Unit,
-    onViewInLibrary: () -> Unit
+    onViewInLibrary: () -> Unit,
+    viewModel: ProductDetailViewModel = hiltViewModel()
 ) {
-    val products by CreatorRepository.products.collectAsState()
-    val isCreatorMode by CreatorRepository.isCreatorMode.collectAsState()
+    val products by viewModel.products.collectAsState()
+    val isCreatorMode by viewModel.isCreatorMode.collectAsState()
     val product = products.find { it.id == productId } ?: products.first()
 
     var showPurchaseSuccess by remember { mutableStateOf(false) }
@@ -219,7 +220,7 @@ fun ProductDetailScreen(
         // Purchase Button
         Button(
             onClick = {
-                CreatorRepository.purchaseProduct(product.id)
+                viewModel.purchaseProduct(product.id)
                 showPurchaseSuccess = true
             },
             modifier = Modifier
@@ -325,7 +326,7 @@ fun ProductDetailScreen(
                 Button(
                     onClick = {
                         val newLic = if (allowCommercial) "Commercial Creator License" else "Personal Non-Commercial License"
-                        CreatorRepository.updateProductRights(
+                        viewModel.updateProductRights(
                             ProductRightsConfig(
                                 productId = product.id,
                                 productTitle = product.title,
@@ -412,7 +413,7 @@ fun ProductDetailScreen(
                 Button(
                     onClick = {
                         val p = marketplacePrice.toDoubleOrNull() ?: (product.price.amount / 100.0)
-                        CreatorRepository.updateMarketplaceListing(
+                        viewModel.updateMarketplaceListing(
                             MarketplaceListing(
                                 productId = product.id,
                                 productTitle = product.title,

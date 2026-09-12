@@ -21,20 +21,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.core.design.RightsTrustBadge
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.model.CreatorProduct
-import com.somuleco.creator.data.repository.CreatorRepository
+import com.somuleco.creator.data.model.ProductListing
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun StoreScreen(
     onNavigate: (Screen) -> Unit,
-    onOpenProductDetail: (String) -> Unit
+    onOpenProductDetail: (String) -> Unit,
+    viewModel: ProductsViewModel = hiltViewModel()
 ) {
-    val products by CreatorRepository.products.collectAsState()
-    val totalRevenue = products.sumOf { it.revenueTotal }
-    val totalSales = products.sumOf { it.salesCount }
+    val state by viewModel.state.collectAsState()
 
     Column(
         modifier = Modifier
@@ -64,6 +64,17 @@ fun StoreScreen(
             }
         }
 
+        UiStateContent(
+            state = state,
+            emptyTitle = "No products yet",
+            emptyDescription = "Create your first digital product to start selling.",
+            emptyActionLabel = "New Product",
+            onEmptyAction = { onNavigate(Screen.ProductWizard) }
+        ) { products ->
+        val totalRevenue = products.sumOf { it.revenueTotal }
+        val totalSales = products.sumOf { it.salesCount }
+
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Store Stats Card
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -107,6 +118,8 @@ fun StoreScreen(
                 )
             }
         }
+        }
+        }
     }
 }
 
@@ -120,7 +133,7 @@ fun ProductsScreen(
 
 @Composable
 fun ProductManagementCard(
-    product: CreatorProduct,
+    product: ProductListing,
     onClick: () -> Unit
 ) {
     Card(

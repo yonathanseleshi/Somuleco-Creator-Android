@@ -39,6 +39,9 @@ val TextMuted = Color(0xFF94A3B8)
 val BorderSubtle = Color(0xFFE2E8F0)
 val BorderStrong = Color(0xFFCBD5E1)
 
+// Wave 05 four-state UI convention (v0.1-client-data-access.md §3) error presentation.
+val ErrorRed = Color(0xFFDC2626)
+
 // Semantic Gradients
 val CreatorGradient = Brush.linearGradient(
     colors = listOf(SomulecoPurple, SomulecoPink, SomulecoBlue)

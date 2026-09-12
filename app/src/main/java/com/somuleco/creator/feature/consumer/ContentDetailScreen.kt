@@ -23,18 +23,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.design.AccessBadge
 import com.somuleco.creator.core.navigation.Screen
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.data.model.AccessType
-import com.somuleco.creator.data.repository.CreatorRepository
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun ContentDetailScreen(
     contentId: String,
     onNavigate: (Screen) -> Unit,
-    onOpenSubscriptionPlans: () -> Unit
+    onOpenSubscriptionPlans: () -> Unit,
+    viewModel: ContentDetailViewModel = hiltViewModel()
 ) {
-    val contentList by CreatorRepository.contentItems.collectAsState()
-    val comments by CreatorRepository.comments.collectAsState()
+    val contentList by viewModel.contentItems.collectAsState()
+    val comments by viewModel.comments.collectAsState()
     val item = contentList.find { it.id == contentId } ?: contentList.first()
 
     var commentText by remember { mutableStateOf("") }
@@ -164,7 +165,7 @@ fun ContentDetailScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.clickable { CreatorRepository.toggleLike(item.id) }
+                modifier = Modifier.clickable { viewModel.toggleLike(item.id) }
             ) {
                 Icon(
                     imageVector = if (item.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -219,7 +220,7 @@ fun ContentDetailScreen(
             IconButton(
                 onClick = {
                     if (commentText.isNotBlank()) {
-                        CreatorRepository.addComment(commentText)
+                        viewModel.addComment(commentText)
                         commentText = ""
                     }
                 },

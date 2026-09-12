@@ -22,17 +22,19 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.TransactionItem
-import com.somuleco.creator.data.repository.CreatorRepository
 import com.somuleco.creator.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RevenueScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: RevenueViewModel = hiltViewModel()
 ) {
-    val transactions by CreatorRepository.transactions.collectAsState()
+    val state by viewModel.state.collectAsState()
     var selectedTransaction by remember { mutableStateOf<TransactionItem?>(null) }
     var withdrawalMessage by remember { mutableStateOf<String?>(null) }
 
@@ -48,6 +50,10 @@ fun RevenueScreen(
             Text("Revenue & Payouts", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text("Complete breakdown of subscriptions, store sales, and fees", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         }
+
+        UiStateContent(state = state) { revenue ->
+        val transactions = revenue.transactions
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
         withdrawalMessage?.let { msg ->
             Card(
@@ -84,11 +90,11 @@ fun RevenueScreen(
                 ) {
                     Column {
                         Text("Available Payout Balance", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                        Text("$7,820.00", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = SomulecoGreenText)
+                        Text("$${"%,.2f".format(revenue.availableBalance)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = SomulecoGreenText)
                     }
 
                     Button(
-                        onClick = { withdrawalMessage = "Payout of $7,820.00 initiated to your connected bank account." },
+                        onClick = { withdrawalMessage = "Payout of $${"%,.2f".format(revenue.availableBalance)} initiated to your connected bank account." },
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = SomulecoGreenDark)
                     ) {
@@ -106,15 +112,15 @@ fun RevenueScreen(
                 ) {
                     Column {
                         Text("Pending Clearance", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                        Text("$1,430.00", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                        Text("$${"%,.2f".format(revenue.pendingBalance)}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     }
                     Column {
                         Text("Subscriptions (MRR)", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                        Text("$8,190.00", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = SomulecoPurple)
+                        Text("$${"%,.2f".format(revenue.monthlyRecurringRevenue)}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = SomulecoPurple)
                     }
                     Column {
                         Text("Product Sales", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                        Text("$10,260.00", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = SomulecoBlue)
+                        Text("$${"%,.2f".format(revenue.productSalesRevenue)}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = SomulecoBlue)
                     }
                 }
             }
@@ -155,6 +161,8 @@ fun RevenueScreen(
                     }
                 }
             }
+        }
+        }
         }
     }
 

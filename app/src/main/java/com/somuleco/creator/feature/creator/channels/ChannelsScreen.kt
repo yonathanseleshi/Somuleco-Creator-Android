@@ -22,17 +22,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.somuleco.creator.core.design.UiStateContent
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.model.Channel
-import com.somuleco.creator.data.repository.CreatorRepository
+import com.somuleco.creator.core.ui.UiState
+import com.somuleco.creator.data.model.ChannelSummary
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun ChannelsScreen(
     onNavigate: (Screen) -> Unit,
-    onOpenChannelDetail: (String) -> Unit
+    onOpenChannelDetail: (String) -> Unit,
+    viewModel: ChannelsViewModel = hiltViewModel()
 ) {
-    val channels by CreatorRepository.channels.collectAsState()
+    val state by viewModel.state.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -63,15 +66,23 @@ fun ChannelsScreen(
             }
         }
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
-            items(channels) { channel ->
-                ChannelManagementCard(
-                    channel = channel,
-                    onClick = { onOpenChannelDetail(channel.id) }
-                )
+        UiStateContent(
+            state = state,
+            emptyTitle = "No channels yet",
+            emptyDescription = "Create your first channel to start publishing.",
+            emptyActionLabel = "New Channel",
+            onEmptyAction = { showCreateDialog = true }
+        ) { channels ->
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(channels) { channel ->
+                    ChannelManagementCard(
+                        channel = channel,
+                        onClick = { onOpenChannelDetail(channel.id) }
+                    )
+                }
             }
         }
     }
@@ -80,7 +91,7 @@ fun ChannelsScreen(
         CreateChannelDialog(
             onDismiss = { showCreateDialog = false },
             onChannelCreated = { name, desc, cat, handle ->
-                CreatorRepository.createChannel(name, desc, cat, handle)
+                viewModel.createChannel(name, desc, cat, handle)
                 showCreateDialog = false
             }
         )
@@ -89,7 +100,7 @@ fun ChannelsScreen(
 
 @Composable
 private fun ChannelManagementCard(
-    channel: Channel,
+    channel: ChannelSummary,
     onClick: () -> Unit
 ) {
     Card(

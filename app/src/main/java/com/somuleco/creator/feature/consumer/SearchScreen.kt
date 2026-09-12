@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
@@ -28,15 +28,16 @@ fun SearchScreen(
     onNavigate: (Screen) -> Unit,
     onOpenContentDetail: (String) -> Unit,
     onOpenProductDetail: (String) -> Unit,
-    onOpenCreatorProfile: () -> Unit
+    onOpenCreatorProfile: () -> Unit,
+    viewModel: SearchViewModel = hiltViewModel()
 ) {
     var query by remember { mutableStateOf("") }
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("All", "Creators", "Channels", "Posts", "Products")
 
-    val contentList by CreatorRepository.contentItems.collectAsState()
-    val products by CreatorRepository.products.collectAsState()
-    val channels by CreatorRepository.channels.collectAsState()
+    val contentList by viewModel.contentItems.collectAsState()
+    val products by viewModel.products.collectAsState()
+    val channels by viewModel.channels.collectAsState()
 
     val filteredContent = contentList.filter { it.title.contains(query, ignoreCase = true) || it.summary.contains(query, ignoreCase = true) }
     val filteredProducts = products.filter { it.title.contains(query, ignoreCase = true) || it.shortDescription.contains(query, ignoreCase = true) }

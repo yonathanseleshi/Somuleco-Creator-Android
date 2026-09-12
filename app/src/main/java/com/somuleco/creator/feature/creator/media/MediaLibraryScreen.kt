@@ -22,14 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.data.model.MediaType
-import com.somuleco.creator.data.repository.CreatorRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
 
 @Composable
 fun MediaLibraryScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: MediaLibraryViewModel = hiltViewModel()
 ) {
-    val mediaItems by CreatorRepository.mediaItems.collectAsState()
+    val mediaItems by viewModel.mediaItems.collectAsState()
     var selectedFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "Images", "Videos", "Audio", "Documents")
 
@@ -132,7 +133,7 @@ fun MediaLibraryScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        CreatorRepository.uploadMediaItem("studio_session_raw_cut.mp4", "VIDEO", "142 MB", "Photography Masterclass")
+                        viewModel.uploadMedia("studio_session_raw_cut.mp4", "VIDEO", "142 MB", "Photography Masterclass")
                         showUploadModal = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SomulecoBlue)
