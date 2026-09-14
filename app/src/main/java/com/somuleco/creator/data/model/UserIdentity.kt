@@ -7,7 +7,21 @@ data class UserIdentity(
     val username: String,
     val email: String,
     val isCreator: Boolean = true
-)
+) {
+    companion object {
+        // Foundation Wave 08: the "nobody is signed in yet" placeholder FirebaseAuthRepository
+        // publishes on currentUser before the first AuthStateListener callback resolves, and
+        // again after sign-out — mirrors Somuleco Connect's own
+        // `UserProfile.unauthenticatedPlaceholder()`.
+        fun unauthenticatedPlaceholder() = UserIdentity(
+            id = "",
+            displayName = "",
+            username = "",
+            email = "",
+            isCreator = false
+        )
+    }
+}
 
 // Vocabulary aligned to the canonical CreatorAccountInfo.status enum in
 // `GRD/Contracts/v0.1-domain-contracts.md` §3.2 (draft/active/restricted/

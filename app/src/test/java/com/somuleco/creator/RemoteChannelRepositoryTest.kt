@@ -39,6 +39,7 @@ private class FakeCoreApiService : CoreApiService {
             )
         )
 
+    override suspend fun getMe() = fail()
     override suspend fun login(request: com.somuleco.creator.core.network.AuthRequest) = fail()
     override suspend fun signup(request: com.somuleco.creator.core.network.SignupRequest) = fail()
     override suspend fun verifyEmail(request: com.somuleco.creator.core.network.VerifyEmailRequest) = fail()

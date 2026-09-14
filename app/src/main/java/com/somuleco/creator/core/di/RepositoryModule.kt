@@ -1,7 +1,6 @@
 package com.somuleco.creator.core.di
 
 import com.somuleco.creator.data.repository.impl.AudienceRepositoryImpl
-import com.somuleco.creator.data.repository.impl.AuthRepositoryImpl
 import com.somuleco.creator.data.repository.impl.ChannelRepositoryImpl
 import com.somuleco.creator.data.repository.impl.ContentRepositoryImpl
 import com.somuleco.creator.data.repository.impl.CreatorAIRepositoryImpl
@@ -15,7 +14,6 @@ import com.somuleco.creator.data.repository.impl.RightsRepositoryImpl
 import com.somuleco.creator.data.repository.impl.SettingsRepositoryImpl
 import com.somuleco.creator.data.repository.impl.SubscriptionRepositoryImpl
 import com.somuleco.creator.data.repository.interfaces.AudienceRepository
-import com.somuleco.creator.data.repository.interfaces.AuthRepository
 import com.somuleco.creator.data.repository.interfaces.ChannelRepository
 import com.somuleco.creator.data.repository.interfaces.ContentRepository
 import com.somuleco.creator.data.repository.interfaces.CreatorAIRepository
@@ -35,20 +33,19 @@ import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 /**
- * Binds every one of the 14 repository interfaces (`data/repository/interfaces/
- * DomainRepositories.kt`) to its per-domain implementation, so every migrated call
+ * Binds 13 of the 14 repository interfaces (`data/repository/interfaces/
+ * DomainRepositories.kt`) to their per-domain implementations, so every migrated call
  * site is DI-supplied and typed against the interface (plan §7.3 tasks 1 & 4;
  * `v0.1-client-data-access.md` §9 substitutability requirement). A test module can
  * override any single `@Binds` here to substitute a fake — see
  * `RepositorySubstitutabilityTest`.
+ *
+ * `AuthRepository` is deliberately NOT bound here — see [AuthRepositoryModule] (Foundation
+ * Wave 08) for why it needed to move into its own module.
  */
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
-
-    @Binds
-    @Singleton
-    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
 
     @Binds
     @Singleton

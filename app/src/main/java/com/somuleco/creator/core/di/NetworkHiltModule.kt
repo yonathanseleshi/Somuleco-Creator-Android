@@ -4,6 +4,8 @@ import com.somuleco.creator.core.network.AuthTokenProvider
 import com.somuleco.creator.core.network.AuthTokenProviderImpl
 import com.somuleco.creator.core.network.CoreApiService
 import com.somuleco.creator.core.network.CreatorAiApiService
+import com.somuleco.creator.core.network.FirebaseAuthIdTokenProvider
+import com.somuleco.creator.core.network.FirebaseIdTokenProvider
 import com.somuleco.creator.core.network.NetworkModule
 import dagger.Binds
 import dagger.Module
@@ -24,6 +26,13 @@ abstract class NetworkBindsModule {
     @Binds
     @Singleton
     abstract fun bindAuthTokenProvider(impl: AuthTokenProviderImpl): AuthTokenProvider
+
+    // Foundation Wave 08 (plan §7.4 task 4): binds the synchronous real-Firebase-ID-token seam
+    // AuthTokenProviderImpl now reads through, kept as an interface so it's fake-able in tests
+    // (AuthTokenProviderImplTest) without touching a real FirebaseAuth instance.
+    @Binds
+    @Singleton
+    abstract fun bindFirebaseIdTokenProvider(impl: FirebaseAuthIdTokenProvider): FirebaseIdTokenProvider
 }
 
 @Module

@@ -57,6 +57,25 @@ data class GenericMessageResponse(
     val message: String
 )
 
+// -----------------------------------------------------------------------------
+// Identity bootstrap (Foundation Wave 08, `GRD/Contracts/v0.1-identity-foundation.md` §3/§5).
+// `GET /me` bootstraps (create-on-first-call) this API's own `InternalUser` row from the
+// caller's verified Firebase ID token — `userId` is the shared Somuleco identity id (a Firebase
+// uid), NOT a UUID, hence a plain String here exactly as [com.somuleco.creator.data.model.
+// UserIdentity.id] already is.
+// -----------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class MeDto(
+    val userId: String
+)
+
+@JsonClass(generateAdapter = true)
+data class MeEnvelope(
+    val data: MeDto?,
+    val meta: Map<String, Any>? = null
+)
+
 @JsonClass(generateAdapter = true)
 data class ChannelDto(
     val id: String,
@@ -180,7 +199,17 @@ data class RevenueTransactionDto(
 
 interface CoreApiService {
 
-    // Auth & Identity
+    // Identity bootstrap (Foundation Wave 08). Called by FirebaseAuthRepository after every
+    // successful Firebase sign-in/session-restoration to obtain this API's own InternalUser
+    // context — creates the row on first call for a brand-new identity, per
+    // `v0.1-identity-foundation.md` §5.
+    @GET("me")
+    suspend fun getMe(): Response<MeEnvelope>
+
+    // Auth & Identity — legacy password-accepting endpoints speculatively authored pre-Wave-08.
+    // NestJS never verifies a password directly (Firebase does that; see
+    // `v0.1-identity-foundation.md` §2) — these routes have no server-side counterpart and are
+    // not called anywhere in this app (FirebaseAuthRepository never invokes them).
     @POST("auth/login")
     suspend fun login(@Body request: AuthRequest): Response<AuthResponse>
 

@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,18 +26,29 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.somuleco.creator.core.navigation.Screen
 import com.somuleco.creator.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
     onNavigate: (Screen) -> Unit,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var email by remember { mutableStateOf("elena@rostovaphoto.com") }
-    var password by remember { mutableStateOf("••••••••") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    // Foundation Wave 08: real form state (loading/error) driven by FirebaseAuthRepository via
+    // AuthViewModel — replaces the local `isLoading` flag that used to gate nothing but the
+    // button's own spinner before immediately calling onLoginSuccess() unconditionally.
+    val formState by viewModel.formState.collectAsStateWithLifecycle()
+    val isLoading = formState is AuthFormState.Loading
 
     Column(
         modifier = Modifier
@@ -131,13 +143,26 @@ fun LoginScreen(
             )
         }
 
+        if (formState is AuthFormState.Error) {
+            Text(
+                text = (formState as AuthFormState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("text_login_error")
+            )
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Foundation Wave 08 (acceptance criterion 9): this button now calls the real
+        // AuthRepository (Firebase-backed) via AuthViewModel — onLoginSuccess only fires once
+        // Firebase has actually verified the credential and this API's own bootstrap
+        // (GET /api/v1/me) has succeeded. There is no longer any code path here that signs a
+        // user in without real verification — the previous "Instant Demo" shortcut card and the
+        // pre-filled elena@rostovaphoto.com credentials are removed entirely, not merely hidden.
         Button(
-            onClick = {
-                isLoading = true
-                onLoginSuccess()
-            },
+            onClick = { viewModel.login(email, password, onLoginSuccess) },
+            enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
@@ -152,30 +177,21 @@ fun LoginScreen(
             }
         }
 
-        // Demo login helper card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SomulecoBlueLight)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        email = "elena@rostovaphoto.com"
-                        password = "secure_password"
-                        onLoginSuccess()
-                    }
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text("⚡", fontSize = 20.sp)
-                Column {
-                    Text("Instant Demo: Sign in as Elena Rostova", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = SomulecoBlueDark)
-                    Text("Photography Educator with active channels & products", style = MaterialTheme.typography.bodySmall, color = SomulecoBlueDark)
+        OutlinedButton(
+            onClick = {
+                coroutineScope.launch {
+                    requestGoogleIdToken(context)
+                        .onSuccess { idToken -> viewModel.loginWithGoogle(idToken, onLoginSuccess) }
                 }
-            }
+            },
+            enabled = !isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .testTag("button_google_signin"),
+            shape = RoundedCornerShape(25.dp)
+        ) {
+            Text("Continue with Google", fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -198,12 +214,15 @@ fun LoginScreen(
 @Composable
 fun SignupScreen(
     onNavigate: (Screen) -> Unit,
-    onSignupSuccess: () -> Unit
+    onSignupSuccess: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var agreeTerms by remember { mutableStateOf(true) }
+    val formState by viewModel.formState.collectAsStateWithLifecycle()
+    val isLoading = formState is AuthFormState.Loading
 
     Column(
         modifier = Modifier
@@ -278,8 +297,21 @@ fun SignupScreen(
             Text("I agree to Somuleco Terms & Creator Rights Policy", style = MaterialTheme.typography.bodySmall)
         }
 
+        if (formState is AuthFormState.Error) {
+            Text(
+                text = (formState as AuthFormState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("text_signup_error")
+            )
+        }
+
+        // Foundation Wave 08: real Firebase account creation. `onSignupSuccess` (which
+        // navigates to VerifyEmailScreen) only fires once Firebase's createUser call and this
+        // API's own bootstrap have both succeeded — not unconditionally on tap, as before.
         Button(
-            onClick = { onNavigate(Screen.VerifyEmail) },
+            onClick = { viewModel.signup(name, email, password, onSignupSuccess) },
+            enabled = !isLoading && agreeTerms && name.isNotBlank() && email.isNotBlank() && password.length >= 8,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
@@ -287,7 +319,11 @@ fun SignupScreen(
             shape = RoundedCornerShape(25.dp),
             colors = ButtonDefaults.buttonColors(containerColor = SomulecoPurple)
         ) {
-            Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+            } else {
+                Text("Create Account", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -310,9 +346,13 @@ fun SignupScreen(
 @Composable
 fun VerifyEmailScreen(
     onNavigate: (Screen) -> Unit,
-    onVerified: () -> Unit
+    onVerified: () -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var code by remember { mutableStateOf("729410") }
+    // Firebase's real email verification is link-based (an emailed link, not a typed numeric
+    // code — see FirebaseAuthRepository.verifyEmail's doc comment), so this screen no longer
+    // pre-fills a fake "correct" code (was "729410") — there was never a real code to check.
+    var code by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -368,18 +408,21 @@ fun VerifyEmailScreen(
             Text("Verify & Continue", fontWeight = FontWeight.Bold)
         }
 
-        TextButton(onClick = { /* simulated resend */ }) {
-            Text("Resend Code", color = SomulecoBlue, fontWeight = FontWeight.SemiBold)
+        TextButton(onClick = { viewModel.resendEmailVerification() }) {
+            Text("Resend Verification Email", color = SomulecoBlue, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
 fun ForgotPasswordScreen(
-    onNavigate: (Screen) -> Unit
+    onNavigate: (Screen) -> Unit,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     var email by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
+    val formState by viewModel.formState.collectAsStateWithLifecycle()
+    val isLoading = formState is AuthFormState.Loading
 
     Column(
         modifier = Modifier
@@ -422,15 +465,28 @@ fun ForgotPasswordScreen(
             shape = RoundedCornerShape(14.dp)
         )
 
+        if (formState is AuthFormState.Error) {
+            Text(
+                text = (formState as AuthFormState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
         Button(
-            onClick = { sent = true },
+            onClick = { viewModel.forgotPassword(email) { sent = true } },
+            enabled = !isLoading && email.isNotBlank(),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
             shape = RoundedCornerShape(25.dp),
             colors = ButtonDefaults.buttonColors(containerColor = SomulecoBlue)
         ) {
-            Text("Send Instructions", fontWeight = FontWeight.Bold)
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+            } else {
+                Text("Send Instructions", fontWeight = FontWeight.Bold)
+            }
         }
 
         if (sent) {

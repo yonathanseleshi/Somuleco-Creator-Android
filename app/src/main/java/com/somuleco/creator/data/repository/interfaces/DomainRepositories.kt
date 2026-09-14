@@ -35,9 +35,20 @@ interface AuthRepository {
 
     suspend fun login(email: String, password: String): Result<UserIdentity>
     suspend fun signup(name: String, email: String, password: String): Result<UserIdentity>
+
+    // Foundation Wave 08 (plan §7.4 task 5, §13 Decision 8): Google Sign-In via Credential
+    // Manager. [idToken] is the Google ID token Credential Manager returns
+    // (`feature/auth/GoogleSignInHelper.kt`), exchanged here for a Firebase credential.
+    suspend fun loginWithGoogle(idToken: String): Result<UserIdentity>
+
     suspend fun verifyEmail(code: String): Result<Boolean>
     suspend fun forgotPassword(email: String): Result<Boolean>
     suspend fun resetPassword(token: String, newPassword: String): Result<Boolean>
+
+    // Foundation Wave 08: re-sends Firebase's own verification email to the currently
+    // signed-in user (mirrors Somuleco Connect's `resendEmailVerification`).
+    suspend fun resendEmailVerification(): Result<Unit>
+
     suspend fun logout()
 
     fun setCreatorMode(enabled: Boolean)

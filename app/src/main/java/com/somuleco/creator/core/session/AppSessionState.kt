@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.somuleco.creator.data.model.AuthState
-import com.somuleco.creator.data.model.UserIdentity
 import com.somuleco.creator.data.repository.interfaces.ChannelRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -42,22 +41,14 @@ class AppSessionState @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    // Auth is still backed by the mock identity seam (Wave 08 replaces the implementation) —
-    // this holder is deliberately not itself an AuthRepository; it mirrors the session's
-    // current auth snapshot for shell-level gating and persists mode/channel alongside it.
-    private val _authState = MutableStateFlow<AuthState>(
-        AuthState.Authenticated(
-            user = UserIdentity(
-                id = "usr_elena",
-                displayName = "Elena Rostova",
-                username = "elenarostova",
-                email = "elena@rostovaphoto.com",
-                isCreator = true
-            ),
-            isCreator = true,
-            hasCompletedOnboarding = true
-        )
-    )
+    // Foundation Wave 08 (plan §7.4 task 6): starts Unknown, not pre-authenticated. Firebase
+    // persists sessions locally on Android, so on cold start this holder genuinely does not yet
+    // know whether there is a restorable session — only FirebaseAuthRepository's own
+    // AuthStateListener callback (which calls setAuthState below) can resolve that, once it has
+    // actually asked Firebase. This holder is deliberately not itself an AuthRepository; it
+    // mirrors the session's current auth snapshot for shell-level gating and persists
+    // mode/channel alongside it.
+    private val _authState = MutableStateFlow<AuthState>(AuthState.Unknown)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     private val _isCreatorMode = MutableStateFlow(true)

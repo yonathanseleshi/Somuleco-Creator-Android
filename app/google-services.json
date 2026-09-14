@@ -1,0 +1,35 @@
+{
+  "_comment": "Foundation Wave 08 (plan §7.4 task 2, §13 Decision 1). This is a HAND-AUTHORED, NON-FUNCTIONAL PLACEHOLDER, not a real Firebase project export. Creator Android's package (com.somuleco.creator) is not yet registered in the shared `somuleco-firebase` Firebase project (confirmed by reading Somuleco-Connect-Android/app/google-services.json, which lists three unrelated registered apps) - registering it requires Firebase console access no implementing agent has. This file exists only so the `google-services` Gradle plugin has something to parse (missingGoogleServicesStrategy = WARN already tolerates its absence, but a present-and-parseable file also generates the `R.string.default_web_client_id` resource GoogleSignInHelper.kt needs to compile) and so `FirebaseApp.initializeApp()` succeeds locally. Every value below is fabricated - none of it corresponds to a real Firebase project, API key, or OAuth client. `core/di/FirebaseModule.kt` points FirebaseAuth at the Firebase Local Emulator Suite (10.0.2.2:9099) in debug builds, so the fabricated api_key/project_id here are never actually sent to a real Firebase backend for authentication. Replace this file with a real export once `com.somuleco.creator` is registered in the shared project (disclosed, non-blocking follow-up - see the Wave 08 completion report).",
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "somuleco-creator-local-dev-placeholder",
+    "storage_bucket": "somuleco-creator-local-dev-placeholder.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.somuleco.creator"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-placeholderwebclientfordevonly.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-PLACEHOLDER-NOT-A-REAL-KEY-000000"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
