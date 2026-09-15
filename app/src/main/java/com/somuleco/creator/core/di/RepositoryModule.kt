@@ -4,6 +4,7 @@ import com.somuleco.creator.data.repository.impl.AudienceRepositoryImpl
 import com.somuleco.creator.data.repository.impl.ChannelRepositoryImpl
 import com.somuleco.creator.data.repository.impl.ContentRepositoryImpl
 import com.somuleco.creator.data.repository.impl.CreatorAIRepositoryImpl
+import com.somuleco.creator.data.repository.impl.CreatorAccountRepositoryImpl
 import com.somuleco.creator.data.repository.impl.CreatorProfileRepositoryImpl
 import com.somuleco.creator.data.repository.impl.MarketplaceRepositoryImpl
 import com.somuleco.creator.data.repository.impl.MediaRepositoryImpl
@@ -17,6 +18,7 @@ import com.somuleco.creator.data.repository.interfaces.AudienceRepository
 import com.somuleco.creator.data.repository.interfaces.ChannelRepository
 import com.somuleco.creator.data.repository.interfaces.ContentRepository
 import com.somuleco.creator.data.repository.interfaces.CreatorAIRepository
+import com.somuleco.creator.data.repository.interfaces.CreatorAccountRepository
 import com.somuleco.creator.data.repository.interfaces.CreatorProfileRepository
 import com.somuleco.creator.data.repository.interfaces.MarketplaceRepository
 import com.somuleco.creator.data.repository.interfaces.MediaRepository
@@ -98,4 +100,11 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindCreatorProfileRepository(impl: CreatorProfileRepositoryImpl): CreatorProfileRepository
+
+    // Foundation Wave 09 (plan §7.4 task 1): the first real, Retrofit-backed repository bound
+    // here rather than a `MockCreatorDataSource`-backed one — Creator Account activation must
+    // call the real API, per `v0.1-creator-authorization.md`, not a local mock.
+    @Binds
+    @Singleton
+    abstract fun bindCreatorAccountRepository(impl: CreatorAccountRepositoryImpl): CreatorAccountRepository
 }

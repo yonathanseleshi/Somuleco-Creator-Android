@@ -194,6 +194,60 @@ data class RevenueTransactionDto(
 )
 
 // -----------------------------------------------------------------------------
+// Creator Account (Foundation Wave 09, `GRD/Contracts/v0.1-creator-authorization.md` §2-3).
+// Collection + `:id`-scoped shape — a Somuleco identity may own multiple Creator Accounts,
+// so `GET creator-account` lists all of the caller's accounts rather than resolving "the one
+// row for this user" the way pre-Wave-09 code assumed.
+//
+// [CreatorAccountDto] mirrors the field set on [com.somuleco.creator.core.model.CreatorAccount]
+// (Wave 07/08's already-declared, previously-unwired contract model) as a `String`-typed
+// Retrofit/Moshi wire shape (status/onboardingStatus are transmitted as raw enum strings, not
+// re-parsed into an enum here, so an additional server-side status this client doesn't yet know
+// about degrades to "an unrecognized string" rather than a hard Moshi parse failure).
+//
+// [CreateCreatorAccountRequest] deliberately carries ONLY `creatorType` — verified directly
+// against the real NestJS `CreateCreatorAccountDto`
+// (`src/creator-account/dto/create-creator-account.dto.ts`), which declares `creatorType:
+// string` (`@IsNotEmpty`) and nothing else. The API's global ValidationPipe is
+// `whitelist: true, forbidNonWhitelisted: true` (`src/app.module.ts:59-60`), so any additional
+// property (an earlier draft of this file sent `accountName`/`displayName`/`description`,
+// per the Wave 09 plan's own loosely-worded §7.4 task 4) is rejected outright as a
+// non-whitelisted property, and omitting `creatorType` fails required-field validation — i.e.
+// the earlier shape made every real POST /creator-account call a guaranteed 400. Matches Web's
+// corrected implementation (`services/domain/creator-account.service.ts`), which resolved the
+// same plan-vs-actual-DTO mismatch the same way.
+// -----------------------------------------------------------------------------
+
+@JsonClass(generateAdapter = true)
+data class CreatorAccountDto(
+    val id: String,
+    val internalUserId: String,
+    val status: String,
+    val creatorType: String? = null,
+    val primaryCategoryId: String? = null,
+    val onboardingStatus: String,
+    val onboardingCompletedAt: String? = null,
+    val defaultChannelId: String? = null,
+    val defaultCurrency: String? = null,
+    val countryCode: String? = null,
+    val monetizationEnabled: Boolean = false,
+    val storeEnabled: Boolean = false,
+    val subscriptionsEnabled: Boolean = false,
+    val aiEnabled: Boolean = false,
+    val publicCreatorStatus: String? = null,
+    val activatedAt: String? = null,
+    val suspendedAt: String? = null,
+    val closedAt: String? = null,
+    val createdAt: String,
+    val updatedAt: String
+)
+
+@JsonClass(generateAdapter = true)
+data class CreateCreatorAccountRequest(
+    val creatorType: String
+)
+
+// -----------------------------------------------------------------------------
 // NestJS Core API Retrofit Service
 // -----------------------------------------------------------------------------
 
@@ -278,4 +332,30 @@ interface CoreApiService {
 
     @GET("creator/revenue/transactions")
     suspend fun getTransactions(): Response<List<RevenueTransactionDto>>
+
+    // Creator Account (Foundation Wave 09, `v0.1-creator-authorization.md` §2). Collection +
+    // `:id`-scoped — a caller may own several accounts, so `GET creator-account` lists all of
+    // them rather than resolving a singular "current" row.
+    @GET("creator-account")
+    suspend fun listCreatorAccounts(): Response<List<CreatorAccountDto>>
+
+    @GET("creator-account/{id}")
+    suspend fun getCreatorAccount(@Path("id") id: String): Response<CreatorAccountDto>
+
+    // Creates a new, independent `draft` account for the caller every call — no
+    // one-per-user uniqueness check (`v0.1-creator-authorization.md` §2, §13 Decision 3).
+    @POST("creator-account")
+    suspend fun activateCreatorAccount(@Body request: CreateCreatorAccountRequest): Response<CreatorAccountDto>
+
+    // `draft` -> `active` only (409 otherwise, surfaced here as a non-2xx Response).
+    @POST("creator-account/{id}/complete-onboarding")
+    suspend fun completeCreatorAccountOnboarding(@Path("id") id: String): Response<CreatorAccountDto>
+
+    // `suspended` -> `active` only.
+    @POST("creator-account/{id}/reactivate")
+    suspend fun reactivateCreatorAccount(@Path("id") id: String): Response<CreatorAccountDto>
+
+    // `draft`/`active`/`suspended` -> `closed`.
+    @POST("creator-account/{id}/close")
+    suspend fun closeCreatorAccount(@Path("id") id: String): Response<CreatorAccountDto>
 }

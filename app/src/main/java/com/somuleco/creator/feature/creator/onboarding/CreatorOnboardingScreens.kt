@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.somuleco.creator.core.navigation.Screen
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.somuleco.creator.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun CreatorActivationScreen(
@@ -97,6 +98,7 @@ fun CreatorOnboardingScreen(
 ) {
     var currentStep by remember { mutableStateOf(1) }
     val totalSteps = 9
+    val coroutineScope = rememberCoroutineScope()
 
     // State collected across steps
     var selectedGoal by remember { mutableStateOf("Build audience & earn recurring subscriptions") }
@@ -297,8 +299,19 @@ fun CreatorOnboardingScreen(
                 if (currentStep < totalSteps) {
                     currentStep++
                 } else {
-                    viewModel.setCreatorMode(true)
-                    onFinish()
+                    // Foundation Wave 09 (plan §7.4 task 5): perform a real activation +
+                    // complete-onboarding call so the real navigation gate
+                    // (AppSessionState.isCreatorAccountActive) is genuinely satisfied before
+                    // landing on the Creator Dashboard — not just the presentation-only mode
+                    // chip this used to flip alone. See CreatorOnboardingViewModel's doc comment.
+                    coroutineScope.launch {
+                        // creatorType is the real NestJS DTO's only field — selectedType
+                        // ("What kind of creator are you?", step 2) is this wizard's closest
+                        // analog, not displayName (which the real DTO doesn't accept at all).
+                        viewModel.activateRealCreatorAccount(selectedType)
+                        viewModel.setCreatorMode(true)
+                        onFinish()
+                    }
                 }
             },
             modifier = Modifier

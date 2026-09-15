@@ -27,6 +27,7 @@ import com.somuleco.creator.core.session.AppSessionState
 import com.somuleco.creator.data.model.AuthState
 import com.somuleco.creator.feature.auth.*
 import com.somuleco.creator.feature.consumer.*
+import com.somuleco.creator.feature.creator.account.CreatorAccountScreen
 import com.somuleco.creator.feature.creator.ai.CreatorAIScreen
 import com.somuleco.creator.feature.creator.analytics.AnalyticsScreen
 import com.somuleco.creator.feature.creator.audience.AudienceScreen
@@ -354,6 +355,20 @@ private fun androidx.navigation.NavGraphBuilder.consumerGraph(
                 }
             }
         }
+        // Foundation Wave 09 (plan §7.4 task 4): real Creator Account activation/switcher.
+        // Declared once here (not duplicated into creatorGraph) — Navigation Compose route ids
+        // are unique across the whole graph, so this single composable is reachable via
+        // navigateFromShellSafe/onNavigate from both the consumer and creator experience.
+        composable(Screen.CreatorAccountManage.route) {
+            ShellScreen(navController, useExpandedLayout, coroutineScope, appSessionState) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                    CreatorAccountScreen(
+                        onNavigate = { navController.navigateFromShellSafe(it, appSessionState) },
+                        onManageComplete = { navController.popBackStack() }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -530,7 +545,13 @@ private fun androidx.navigation.NavGraphBuilder.creatorGraph(
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                     AccessDeniedScreen(
                         onGoToCreatorActivation = {
-                            navController.navigate(Screen.CreatorActivation.route)
+                            // Foundation Wave 09 (plan §7.4 task 5): routes to the real,
+                            // API-backed activation/switcher screen, not the pre-Wave-09 mock
+                            // marketing wizard (Screen.CreatorActivation) — that wizard's
+                            // completion no longer, by itself, satisfies the real
+                            // AppSessionState.isCreatorAccountActive gate this screen exists
+                            // because the caller failed.
+                            navController.navigate(Screen.CreatorAccountManage.route)
                         }
                     )
                 }
@@ -578,6 +599,15 @@ private fun ShellScreen(
 private fun NavController.navigateFromShellSafe(screen: Screen, appSessionState: AppSessionState) {
     val state = appSessionState.authState.value
     val isAuthenticated = state is AuthState.Authenticated
-    val isCreator = (state as? AuthState.Authenticated)?.isCreator ?: false
+    // Foundation Wave 09 (`v0.1-creator-authorization.md` §7, plan §7.4 task 5): the
+    // Creator-mode navigational landing/access gate now reflects the *selected* Creator
+    // Account's real, server-fetched status (AppSessionState.isCreatorAccountActive, set by
+    // CreatorAccountViewModel from a real GET /creator-account response) rather than the
+    // previously-hardcoded `AuthState.Authenticated.isCreator` (FirebaseAuthRepository has
+    // always set this true unconditionally — see that file's bootstrapAndApply() comment —
+    // exactly the "mode toggle/login = activated" gap this wave closes). Mode itself
+    // (AppSessionState.isCreatorMode) stays untouched here and remains 100% presentation-only,
+    // per the guide's explicit rule (plan §13 Decision 9).
+    val isCreator = isAuthenticated && appSessionState.isCreatorAccountActive.value
     navigateFromShell(screen, isAuthenticated = isAuthenticated, isCreator = isCreator)
 }

@@ -68,6 +68,14 @@ sealed class Screen(val route: String, val title: String) {
 
     object SubscriptionPlansDetail : Screen("subscription_plans_detail", "Membership Plans")
 
+    // Foundation Wave 09 (`v0.1-creator-authorization.md` §2, §7; plan §7.4 task 4): the real,
+    // API-backed Creator Account activation/complete-onboarding form and account-switcher,
+    // distinct from the pre-existing [CreatorActivation]/[CreatorOnboarding] mock marketing
+    // wizard above (kept unchanged — it never called a real repository and still doesn't).
+    // Reachable post-authentication regardless of current Creator-activation status (that is
+    // this screen's whole purpose), so it is intentionally NOT in [creatorOnlyScreens].
+    object CreatorAccountManage : Screen("creator_account_manage", "Creator Accounts")
+
     // Route boundary destinations (v0.1-navigation-semantics.md §5, §7)
     object AccessDenied : Screen("access_denied", "Access Restricted")
 
@@ -80,7 +88,7 @@ sealed class Screen(val route: String, val title: String) {
                 CreatorActivation, CreatorOnboarding, CreatorDashboard, Channels, Content, Audience,
                 Subscribers, Store, Products, Media, Analytics, Revenue, CreatorAI, Rights, Integrations,
                 CreatorSettings, ContentEditor, ProductWizard, CreatorProfileDetail, ChannelDetail,
-                ContentDetail, ProductDetail, SubscriptionPlansDetail, AccessDenied
+                ContentDetail, ProductDetail, SubscriptionPlansDetail, CreatorAccountManage, AccessDenied
             )
         }
 

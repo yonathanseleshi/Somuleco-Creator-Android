@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.somuleco.creator.core.session.AppSessionState
 import com.somuleco.creator.data.model.UserIdentity
 import com.somuleco.creator.data.repository.interfaces.AuthRepository
 import com.somuleco.creator.data.repository.interfaces.ChannelRepository
@@ -50,6 +51,9 @@ class NavigationFlowTest {
     @Inject
     lateinit var channelRepository: ChannelRepository
 
+    @Inject
+    lateinit var appSessionState: AppSessionState
+
     private lateinit var restoreUser: UserIdentity
 
     @Before
@@ -60,12 +64,21 @@ class NavigationFlowTest {
         restoreUser = authRepository.currentUser.value
         runBlocking { authRepository.login(restoreUser.email, "password") }
         authRepository.setCreatorMode(true)
+        // Foundation Wave 09 (`v0.1-creator-authorization.md` §7, plan §7.4 task 5): reaching a
+        // Creator-only destination now requires a real, selected-account "active" status
+        // (AppSessionState.isCreatorAccountActive) rather than the previously-hardcoded
+        // AuthState.Authenticated.isCreator — this suite is exercising the shell/navigation
+        // boundary, not Creator Account activation itself, so it simulates an
+        // already-activated caller directly rather than driving a real CreatorAccountViewModel
+        // through activate()/completeOnboarding().
+        appSessionState.setCreatorAccountActive(true)
     }
 
     @After
     fun tearDown() {
         runBlocking { authRepository.login(restoreUser.email, "password") }
         authRepository.setCreatorMode(true)
+        appSessionState.setCreatorAccountActive(true)
     }
 
     @Test

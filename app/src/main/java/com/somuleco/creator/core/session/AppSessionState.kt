@@ -57,6 +57,23 @@ class AppSessionState @Inject constructor(
     private val _selectedChannelId = MutableStateFlow<String?>(null)
     val selectedChannelId: StateFlow<String?> = _selectedChannelId.asStateFlow()
 
+    // Foundation Wave 09 (`v0.1-creator-authorization.md` §7, plan §7.4 task 3): client-side-only
+    // "which of the caller's possibly-several Creator Accounts is current," persisted exactly
+    // the same way as [selectedChannelId] above. Unlike Channel selection, there is no
+    // "no selection = all" fallback semantic here — [CreatorAccountViewModel] applies the
+    // default-selection rule (sole account; else most-recently-activatedAt; else
+    // most-recently-createdAt) once the real account list has loaded.
+    private val _selectedCreatorAccountId = MutableStateFlow<String?>(null)
+    val selectedCreatorAccountId: StateFlow<String?> = _selectedCreatorAccountId.asStateFlow()
+
+    // Real, server-fetched status of the selected Creator Account (plan §13 Decision 9) — NOT
+    // [isCreatorMode], which stays 100% presentation-only per the guide's explicit rule. This is
+    // what [com.somuleco.creator.core.navigation.navigateFromShell]'s Creator-mode landing gate
+    // must key off instead of the previously-hardcoded `AuthState.Authenticated.isCreator`.
+    // Defaults false: a freshly authenticated identity has taken no activation action yet.
+    private val _isCreatorAccountActive = MutableStateFlow(false)
+    val isCreatorAccountActive: StateFlow<Boolean> = _isCreatorAccountActive.asStateFlow()
+
     init {
         scope.launch { hydrateFromDataStore() }
     }
@@ -72,6 +89,12 @@ class AppSessionState @Inject constructor(
         // null ("All Channels") rather than crashing or keeping a stale reference.
         val channelIds = channelRepository.channels.value.map { it.id }.toSet()
         _selectedChannelId.value = persistedChannelId?.takeIf { it in channelIds }
+
+        // Unlike Channel selection above, there is no locally-available account list at hydrate
+        // time to validate this id against (Creator Accounts are remote-only, unlike the mock
+        // Channel list) — CreatorAccountViewModel.load() re-validates this persisted id against
+        // the real fetched list and re-applies the default-selection rule if it's stale/absent.
+        _selectedCreatorAccountId.value = prefs[KEY_SELECTED_CREATOR_ACCOUNT_ID]
     }
 
     fun setAuthState(state: AuthState) {
@@ -92,10 +115,26 @@ class AppSessionState @Inject constructor(
         }
     }
 
+    fun selectCreatorAccount(id: String?) {
+        _selectedCreatorAccountId.value = id
+        persist {
+            if (id == null) it.remove(KEY_SELECTED_CREATOR_ACCOUNT_ID) else it[KEY_SELECTED_CREATOR_ACCOUNT_ID] = id
+        }
+    }
+
+    /** Set by [com.somuleco.creator.feature.creator.account.CreatorAccountViewModel] whenever
+     * the selected account's fetched `status` changes, so navigation gating always reflects
+     * real server truth rather than a client-decided flag. */
+    fun setCreatorAccountActive(active: Boolean) {
+        _isCreatorAccountActive.value = active
+    }
+
     fun logout() {
         _authState.value = AuthState.Unauthenticated
         setCreatorMode(false)
         selectChannel(null)
+        selectCreatorAccount(null)
+        setCreatorAccountActive(false)
     }
 
     private fun persist(edit: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
@@ -107,5 +146,6 @@ class AppSessionState @Inject constructor(
     companion object {
         private val KEY_IS_CREATOR_MODE = booleanPreferencesKey("is_creator_mode")
         private val KEY_SELECTED_CHANNEL_ID = stringPreferencesKey("selected_channel_id")
+        private val KEY_SELECTED_CREATOR_ACCOUNT_ID = stringPreferencesKey("selected_creator_account_id")
     }
 }

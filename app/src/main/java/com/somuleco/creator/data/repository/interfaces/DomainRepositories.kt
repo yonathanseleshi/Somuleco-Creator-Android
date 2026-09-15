@@ -1,5 +1,6 @@
 package com.somuleco.creator.data.repository.interfaces
 
+import com.somuleco.creator.core.network.CreatorAccountDto
 import com.somuleco.creator.data.model.*
 import kotlinx.coroutines.flow.StateFlow
 
@@ -207,6 +208,28 @@ interface SettingsRepository {
     val settings: StateFlow<CreatorSettingsData>
 
     fun updateSettings(settings: CreatorSettingsData)
+}
+
+// Foundation Wave 09 (`v0.1-creator-authorization.md` §2/§7, plan §7.4 task 1). Did not exist
+// before this wave — no CreatorAccountRepository, ViewModel, or screen existed on Android.
+// Stateless domain boundary, mirroring [ChannelRepository]'s own precedent: "which account is
+// currently selected" is client-side shell state owned by [com.somuleco.creator.core.session.
+// AppSessionState] (`selectedCreatorAccountId`), not this repository — a caller resolves the
+// selected account by filtering [accounts] against `AppSessionState.selectedCreatorAccountId`
+// itself, exactly as callers already do for Channel context.
+interface CreatorAccountRepository {
+    val accounts: StateFlow<List<CreatorAccountDto>>
+
+    suspend fun listAccounts(): Result<List<CreatorAccountDto>>
+    suspend fun getAccount(id: String): Result<CreatorAccountDto>
+    // creatorType is the ONLY field the real NestJS CreateCreatorAccountDto declares
+    // (`@IsNotEmpty creatorType: string`) — verified directly against
+    // `src/creator-account/dto/create-creator-account.dto.ts`; the ValidationPipe's
+    // `forbidNonWhitelisted: true` rejects any other property.
+    suspend fun activate(creatorType: String): Result<CreatorAccountDto>
+    suspend fun completeOnboarding(id: String): Result<CreatorAccountDto>
+    suspend fun reactivate(id: String): Result<CreatorAccountDto>
+    suspend fun close(id: String): Result<CreatorAccountDto>
 }
 
 interface CreatorProfileRepository {

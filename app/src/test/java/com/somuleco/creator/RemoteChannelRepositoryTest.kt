@@ -59,6 +59,14 @@ private class FakeCoreApiService : CoreApiService {
     override suspend fun toggleMarketplacePublish(productId: String) = fail()
     override suspend fun getRevenueSummary() = fail()
     override suspend fun getTransactions() = fail()
+
+    // Foundation Wave 09 (`v0.1-creator-authorization.md` §2) — not exercised by this test.
+    override suspend fun listCreatorAccounts() = fail()
+    override suspend fun getCreatorAccount(id: String) = fail()
+    override suspend fun activateCreatorAccount(request: com.somuleco.creator.core.network.CreateCreatorAccountRequest) = fail()
+    override suspend fun completeCreatorAccountOnboarding(id: String) = fail()
+    override suspend fun reactivateCreatorAccount(id: String) = fail()
+    override suspend fun closeCreatorAccount(id: String) = fail()
 }
 
 /**

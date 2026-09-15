@@ -315,6 +315,19 @@ fun CreatorShell(
 
                     DrawerSectionTitle("ECOSYSTEM & IDENTITY")
 
+                    // Foundation Wave 09 (`v0.1-creator-authorization.md` §7, plan §7.4 task 4):
+                    // the minimal account-switcher affordance's entry point. Deliberately not
+                    // gated by isCreatorMode (unlike the CREATOR WORKSPACE section above) — its
+                    // whole purpose is letting a not-yet-activated caller reach real activation.
+                    DrawerItem(
+                        label = "Creator Accounts",
+                        icon = Icons.Outlined.SwitchAccount,
+                        isSelected = currentScreen == Screen.CreatorAccountManage,
+                        onClick = {
+                            onNavigate(Screen.CreatorAccountManage)
+                            scope.launch { drawerState.close() }
+                        }
+                    )
                     DrawerItem(
                         label = "My Public Creator Profile",
                         icon = Icons.Outlined.AccountCircle,
